@@ -1,4 +1,4 @@
-use crate::token::{Token, TokenType};
+use crate::token::{Literal, Token, TokenType};
 
 struct Scanner {
     source: String,
@@ -9,7 +9,12 @@ struct Scanner {
 
 impl Scanner {
     pub fn new(source: String) -> Scanner {
-        Scanner { source, start: 0, current: 0, line: 1 }
+        Scanner {
+            source,
+            start: 0,
+            current: 0,
+            line: 1,
+        }
     }
 
     pub fn scan_tokens(&mut self) -> Vec<Token> {
@@ -18,9 +23,14 @@ impl Scanner {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token(&mut tokens);
-        } 
+        }
 
-        tokens.push(Token::new(TokenType::EOF, "".to_string(), self.line));
+        tokens.push(Token::new(
+            TokenType::EOF,
+            "".to_string(),
+            Literal::None,
+            self.line,
+        ));
 
         tokens
     }
@@ -28,61 +38,156 @@ impl Scanner {
     pub fn scan_token(&mut self, tokens: &mut Vec<Token>) {
         let c = self.advance();
         match c {
-            '(' => tokens.push(Token::new(TokenType::LeftParen, c.to_string(), self.line)),
-            ')' => tokens.push(Token::new(TokenType::RightParen, c.to_string(), self.line)),
-            '{' => tokens.push(Token::new(TokenType::LeftBrace, c.to_string(), self.line)),
-            '}' => tokens.push(Token::new(TokenType::RightBrace, c.to_string(), self.line)),
-            ',' => tokens.push(Token::new(TokenType::Comma, c.to_string(), self.line)),
-            '.' => tokens.push(Token::new(TokenType::Dot, c.to_string(), self.line)),
-            '-' => tokens.push(Token::new(TokenType::Minus, c.to_string(), self.line)),
-            '+' => tokens.push(Token::new(TokenType::Plus, c.to_string(), self.line)),
-            ';' => tokens.push(Token::new(TokenType::Semicolon, c.to_string(), self.line)),
-            '*' => tokens.push(Token::new(TokenType::Star, c.to_string(), self.line)),
+            '(' => tokens.push(Token::new(
+                TokenType::LeftParen,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            ')' => tokens.push(Token::new(
+                TokenType::RightParen,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '{' => tokens.push(Token::new(
+                TokenType::LeftBrace,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '}' => tokens.push(Token::new(
+                TokenType::RightBrace,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            ',' => tokens.push(Token::new(
+                TokenType::Comma,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '.' => tokens.push(Token::new(
+                TokenType::Dot,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '-' => tokens.push(Token::new(
+                TokenType::Minus,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '+' => tokens.push(Token::new(
+                TokenType::Plus,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            ';' => tokens.push(Token::new(
+                TokenType::Semicolon,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
+            '*' => tokens.push(Token::new(
+                TokenType::Star,
+                c.to_string(),
+                Literal::None,
+                self.line,
+            )),
             '!' => {
                 if self.match_char('=') {
-                    tokens.push(Token::new(TokenType::BangEqual, "!=".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::BangEqual,
+                        "!=".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 } else {
-                    tokens.push(Token::new(TokenType::Bang, "!".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::Bang,
+                        "!".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 }
-            },
+            }
             '=' => {
                 if self.match_char('=') {
-                    tokens.push(Token::new(TokenType::EqualEqual, "==".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::EqualEqual,
+                        "==".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 } else {
-                    tokens.push(Token::new(TokenType::Equal, "=".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::Equal,
+                        "=".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 }
-            },
+            }
             '<' => {
                 if self.match_char('=') {
-                    tokens.push(Token::new(TokenType::LessEqual, "<=".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::LessEqual,
+                        "<=".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 } else {
-                    tokens.push(Token::new(TokenType::Less, "<".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::Less,
+                        "<".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 }
-            },
+            }
             '>' => {
                 if self.match_char('=') {
-                    tokens.push(Token::new(TokenType::GreaterEqual, ">=".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::GreaterEqual,
+                        ">=".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 } else {
-                    tokens.push(Token::new(TokenType::Greater, ">".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::Greater,
+                        ">".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 }
-            },
+            }
             '/' => {
                 if self.match_char('/') {
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
                 } else {
-                    tokens.push(Token::new(TokenType::Slash, "/".to_string(), self.line));
+                    tokens.push(Token::new(
+                        TokenType::Slash,
+                        "/".to_string(),
+                        Literal::None,
+                        self.line,
+                    ));
                 }
-            },
+            }
             ' ' | '\r' | '\t' => (),
             '\n' => {
                 self.line += 1;
-            },
+            }
             '"' => self.string(tokens),
             '0'..='9' => self.number(tokens),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(tokens),
-            _ => todo!("Handle unexpected tokens")
+            _ => todo!("Handle unexpected tokens"),
         }
     }
 
@@ -135,7 +240,12 @@ impl Scanner {
         self.advance();
 
         let value = self.source[self.start + 1..self.current - 1].to_string();
-        tokens.push(Token::new(TokenType::String(value), self.source[self.start..self.current].to_string(), self.line));
+        tokens.push(Token::new(
+            TokenType::String,
+            self.source[self.start..self.current].to_string(),
+            Literal::String(value),
+            self.line,
+        ));
     }
 
     fn number(&mut self, tokens: &mut Vec<Token>) {
@@ -143,7 +253,7 @@ impl Scanner {
             self.advance();
         }
 
-        // Look for a fractional part.
+        // Look for a fractional part
         if self.peek() == '.' && self.peek_next().is_digit(10) {
             // Consume the "."
             self.advance();
@@ -153,7 +263,16 @@ impl Scanner {
             }
         }
 
-        tokens.push(Token::new(TokenType::Number(self.source[self.start..self.current].parse::<f64>().unwrap()), self.source[self.start..self.current].to_string(), self.line));
+        tokens.push(Token::new(
+            TokenType::Number,
+            self.source[self.start..self.current].to_string(),
+            Literal::Number(
+                self.source[self.start..self.current]
+                    .parse::<f64>()
+                    .unwrap(),
+            ),
+            self.line,
+        ));
     }
 
     fn identifier(&mut self, tokens: &mut Vec<Token>) {
@@ -165,9 +284,14 @@ impl Scanner {
         let token_type = match text.as_str() {
             "let" => TokenType::Let,
             "mut" => TokenType::Mut,
-            _ => TokenType::Identifier(text.clone())
+            _ => TokenType::Identifier,
         };
-            
-        tokens.push(Token::new(token_type, text, self.line));
+
+        tokens.push(Token::new(
+            token_type,
+            text.clone(),
+            Literal::Identifier(text),
+            self.line,
+        ));
     }
 }

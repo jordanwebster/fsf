@@ -1,33 +1,80 @@
-pub enum TokenType {
-    // Single-character tokens.
-    LeftParen, RightParen, LeftBrace, RightBrace,
-    Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
-
-    // One or two character tokens.
-    Bang, BangEqual,
-    Equal, EqualEqual,
-    Less, LessEqual,
-    Greater, GreaterEqual,
-
-    // Literals.
+#[derive(Clone, Debug)]
+pub enum Literal {
+    None,
+    True,
+    False,
     Identifier(String),
     String(String),
     Number(f64),
+}
+
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::None => write!(f, "None"),
+            Self::True => write!(f, "true"),
+            Self::False => write!(f, "false"),
+            Self::Identifier(identifier) => write!(f, "{}", identifier),
+            Self::String(s) => write!(f, "{}", s),
+            Self::Number(n) => write!(f, "{}", n),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum TokenType {
+    // Single-character tokens.
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    Comma,
+    Dot,
+    Minus,
+    Plus,
+    Semicolon,
+    Slash,
+    Star,
+
+    // One or two character tokens.
+    Bang,
+    BangEqual,
+    Equal,
+    EqualEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+
+    // Literals.
+    Identifier,
+    String,
+    Number,
 
     // Keywords.
-    Let, Mut,
+    Let,
+    Mut,
+    False,
+    True,
 
     EOF,
 }
 
+#[derive(Clone, Debug)]
 pub struct Token {
-    token_type: TokenType,
-    lexeme: String,
+    pub token_type: TokenType,
+    pub lexeme: String,
+    pub value: Literal,
     line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, line: usize) -> Token {
-        Token { token_type, lexeme, line }
+    pub fn new(token_type: TokenType, lexeme: String, value: Literal, line: usize) -> Token {
+        Token {
+            token_type,
+            lexeme,
+            value,
+            line,
+        }
     }
 }
