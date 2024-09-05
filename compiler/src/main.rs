@@ -3,6 +3,9 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
 
+mod scanner;
+mod token;
+
 fn main() -> std::io::Result<()> {
     compile_example()?;
     setup_runtime()?;
