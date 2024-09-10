@@ -1,30 +1,23 @@
+use crate::parser::Parser;
+use crate::scanner::Scanner;
+use itertools::Itertools;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
 
 mod expression;
-mod scanner;
-mod token;
 mod parser;
+mod scanner;
+mod statement;
+mod token;
 
 fn main() -> std::io::Result<()> {
-    // let expression = Expression::Binary {
-    //     left: Expression::Unary {
-    //         operator: Token::new(TokenType::Minus, "-".to_string(), 1),
-    //         right: Expression::Literal(Literal::Number(123.0)).into(),
-    //     }
-    //         .into(),
-    //     operator: Token::new(TokenType::Star, "*".to_string(), 1),
-    //     right: Expression::Grouping(Expression::Literal(Literal::Number(45.67)).into()).into(),
-    // };
-    //
-    // println!("{}", printer::print(expression));
-    //
-    // Ok(())
+    std::fs::create_dir_all("dist")?;
     compile_example()?;
-    setup_runtime()?;
-    serve()
+    // setup_runtime()?;
+    // serve()
+    Ok(())
 }
 
 fn serve() -> Result<(), std::io::Error> {
@@ -46,15 +39,32 @@ fn serve() -> Result<(), std::io::Error> {
 }
 
 fn compile_example() -> Result<(), std::io::Error> {
-    std::fs::create_dir_all("dist/static")?;
-
-    let mut file = File::open("../example/index.zhtml")?;
+    let mut file = File::open("../example/test.wip")?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
 
-    let output_path = Path::new("dist/static").join("index.html");
-    let mut output_file = File::create(output_path)?;
-    output_file.write_all(contents.as_bytes())?;
+    let mut scanner = Scanner::new(contents);
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    let output = parser
+        .parse()
+        .into_iter()
+        .filter_map(|stmt| stmt.map(|s| s.compile()))
+        .join("\n");
+
+    let output_path = Path::new("dist").join("test.go");
+    let mut output_file = File::create(&output_path)?;
+    output_file.write_all(output.as_bytes())?;
+
+    // std::fs::create_dir_all("dist/static")?;
+    //
+    // let mut file = File::open("../example/index.zhtml")?;
+    // let mut contents = String::new();
+    // file.read_to_string(&mut contents)?;
+    //
+    // let output_path = Path::new("dist/static").join("index.html");
+    // let mut output_file = File::create(output_path)?;
+    // output_file.write_all(contents.as_bytes())?;
 
     Ok(())
 }

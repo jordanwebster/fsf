@@ -1,6 +1,6 @@
 use crate::token::{Literal, Token, TokenType};
 
-struct Scanner {
+pub struct Scanner {
     source: String,
     start: usize,
     current: usize,
@@ -28,7 +28,7 @@ impl Scanner {
         tokens.push(Token::new(
             TokenType::EOF,
             "".to_string(),
-            Literal::None,
+            None,
             self.line,
         ));
 
@@ -41,61 +41,61 @@ impl Scanner {
             '(' => tokens.push(Token::new(
                 TokenType::LeftParen,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             ')' => tokens.push(Token::new(
                 TokenType::RightParen,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '{' => tokens.push(Token::new(
                 TokenType::LeftBrace,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '}' => tokens.push(Token::new(
                 TokenType::RightBrace,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             ',' => tokens.push(Token::new(
                 TokenType::Comma,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '.' => tokens.push(Token::new(
                 TokenType::Dot,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '-' => tokens.push(Token::new(
                 TokenType::Minus,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '+' => tokens.push(Token::new(
                 TokenType::Plus,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             ';' => tokens.push(Token::new(
                 TokenType::Semicolon,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '*' => tokens.push(Token::new(
                 TokenType::Star,
                 c.to_string(),
-                Literal::None,
+                None,
                 self.line,
             )),
             '!' => {
@@ -103,14 +103,14 @@ impl Scanner {
                     tokens.push(Token::new(
                         TokenType::BangEqual,
                         "!=".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 } else {
                     tokens.push(Token::new(
                         TokenType::Bang,
                         "!".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 }
@@ -120,14 +120,14 @@ impl Scanner {
                     tokens.push(Token::new(
                         TokenType::EqualEqual,
                         "==".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 } else {
                     tokens.push(Token::new(
                         TokenType::Equal,
                         "=".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 }
@@ -137,14 +137,14 @@ impl Scanner {
                     tokens.push(Token::new(
                         TokenType::LessEqual,
                         "<=".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 } else {
                     tokens.push(Token::new(
                         TokenType::Less,
                         "<".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 }
@@ -154,14 +154,14 @@ impl Scanner {
                     tokens.push(Token::new(
                         TokenType::GreaterEqual,
                         ">=".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 } else {
                     tokens.push(Token::new(
                         TokenType::Greater,
                         ">".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 }
@@ -175,7 +175,7 @@ impl Scanner {
                     tokens.push(Token::new(
                         TokenType::Slash,
                         "/".to_string(),
-                        Literal::None,
+                        None,
                         self.line,
                     ));
                 }
@@ -183,6 +183,7 @@ impl Scanner {
             ' ' | '\r' | '\t' => (),
             '\n' => {
                 self.line += 1;
+                tokens.push(Token::new(TokenType::NewLine, "\n".to_string(), None, self.line));
             }
             '"' => self.string(tokens),
             '0'..='9' => self.number(tokens),
@@ -243,7 +244,7 @@ impl Scanner {
         tokens.push(Token::new(
             TokenType::String,
             self.source[self.start..self.current].to_string(),
-            Literal::String(value),
+            Some(Literal::String(value)),
             self.line,
         ));
     }
@@ -266,11 +267,11 @@ impl Scanner {
         tokens.push(Token::new(
             TokenType::Number,
             self.source[self.start..self.current].to_string(),
-            Literal::Number(
+            Some(Literal::Number(
                 self.source[self.start..self.current]
                     .parse::<f64>()
                     .unwrap(),
-            ),
+            )),
             self.line,
         ));
     }
@@ -282,15 +283,17 @@ impl Scanner {
 
         let text = self.source[self.start..self.current].to_string();
         let token_type = match text.as_str() {
+            // Match keywords
             "let" => TokenType::Let,
             "mut" => TokenType::Mut,
+            "print" => TokenType::Print,
             _ => TokenType::Identifier,
         };
 
         tokens.push(Token::new(
             token_type,
             text.clone(),
-            Literal::Identifier(text),
+            Some(Literal::Identifier(text)),
             self.line,
         ));
     }

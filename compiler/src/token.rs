@@ -1,6 +1,5 @@
 #[derive(Clone, Debug)]
 pub enum Literal {
-    None,
     True,
     False,
     Identifier(String),
@@ -11,7 +10,6 @@ pub enum Literal {
 impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::None => write!(f, "None"),
             Self::True => write!(f, "true"),
             Self::False => write!(f, "false"),
             Self::Identifier(identifier) => write!(f, "{}", identifier),
@@ -31,6 +29,7 @@ pub enum TokenType {
     Comma,
     Dot,
     Minus,
+    NewLine,
     Plus,
     Semicolon,
     Slash,
@@ -56,6 +55,7 @@ pub enum TokenType {
     Mut,
     False,
     True,
+    Print,
 
     EOF,
 }
@@ -64,12 +64,12 @@ pub enum TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub value: Literal,
+    pub value: Option<Literal>,
     line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, value: Literal, line: usize) -> Token {
+    pub fn new(token_type: TokenType, lexeme: String, value: Option<Literal>, line: usize) -> Token {
         Token {
             token_type,
             lexeme,

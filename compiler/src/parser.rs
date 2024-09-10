@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 use crate::expression::Expression;
+use crate::statement::Statement;
 use crate::token::{Literal, Token, TokenType};
 
 #[derive(Error, Debug)]
@@ -8,7 +9,7 @@ pub enum ParseError {
     #[error("syntax error: {1}")]
     SyntaxError(Token, String),
 }
-struct Parser {
+pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
 }
@@ -18,8 +19,71 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    fn parse(&mut self) -> Option<Expression> {
-        self.expression().ok()
+    pub fn parse(&mut self) -> Vec<Option<Statement>> {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            if self.match_token(&[TokenType::NewLine]) {
+                self.advance();
+                continue;
+            }
+
+            statements.push(self.declaration());
+        }
+        statements
+    }
+
+    fn declaration(&mut self) -> Option<Statement> {
+        let statement = if self.match_token(&[TokenType::Let]) {
+            self.let_declaration()
+        } else {
+            self.statement()
+        };
+
+        match statement {
+            Ok(statement) => Some(statement),
+            Err(e) => {
+                println!("error: {}", e);
+                self.synchronize();
+                None
+            }
+        }
+    }
+
+    fn let_declaration(&mut self) -> Result<Statement, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect variable name")?.clone();
+
+        let initializer = match self.match_token(&[TokenType::Equal]) {
+            true => Some(self.expression()?),
+            false => None,
+        };
+
+        self.consume(TokenType::NewLine, "Expect new line after variable declaration")?;
+        Ok(Statement::Let(name, initializer))
+    }
+
+    fn statement(&mut self) -> Result<Statement, ParseError> {
+        match self.match_token(&[TokenType::Print]) {
+            true => self.print_statement(),
+            false => self.expression_statement(),
+        }
+    }
+
+    fn synchronize(&mut self) {
+        todo!();
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, ParseError> {
+        self.consume(TokenType::LeftParen, "Expect '('")?;
+        let value = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')'")?;
+        self.consume(TokenType::NewLine, "Expect newline")?;
+        Ok(Statement::Print(value))
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, ParseError> {
+        let value = self.expression()?;
+        self.consume(TokenType::NewLine, "Expect new line")?;
+        Ok(Statement::Expression(value))
     }
 
     fn expression(&mut self) -> Result<Expression, ParseError> {
@@ -116,7 +180,10 @@ impl Parser {
             return Ok(Expression::Literal(Literal::True));
         }
         if self.match_token(&[TokenType::Number, TokenType::String]) {
-            return Ok(Expression::Literal(self.previous().value.clone()));
+            return Ok(Expression::Literal(self.previous().value.clone().unwrap()));
+        }
+        if self.match_token(&[TokenType::Identifier]) {
+            return Ok(Expression::Variable(self.previous().clone()));
         }
         if self.match_token(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
