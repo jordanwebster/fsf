@@ -17,9 +17,7 @@ impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
         Self { tokens, current: 0 }
     }
-}
 
-impl Parser {
     fn parse(&mut self) -> Option<Expression> {
         self.expression().ok()
     }
