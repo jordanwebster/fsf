@@ -22,11 +22,6 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Option<Statement>> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            if self.match_token(&[TokenType::NewLine]) {
-                self.advance();
-                continue;
-            }
-
             statements.push(self.declaration());
         }
         statements
@@ -57,7 +52,7 @@ impl Parser {
             false => None,
         };
 
-        self.consume(TokenType::NewLine, "Expect new line after variable declaration")?;
+        self.consume(TokenType::Semicolon, "Expect ; after variable declaration")?;
         Ok(Statement::Let(name, initializer))
     }
 
@@ -76,13 +71,13 @@ impl Parser {
         self.consume(TokenType::LeftParen, "Expect '('")?;
         let value = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')'")?;
-        self.consume(TokenType::NewLine, "Expect newline")?;
+        self.consume(TokenType::Semicolon, "Expect ;")?;
         Ok(Statement::Print(value))
     }
 
     fn expression_statement(&mut self) -> Result<Statement, ParseError> {
         let value = self.expression()?;
-        self.consume(TokenType::NewLine, "Expect new line")?;
+        self.consume(TokenType::Semicolon, "Expect ;")?;
         Ok(Statement::Expression(value))
     }
 

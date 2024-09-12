@@ -25,12 +25,7 @@ impl Scanner {
             self.scan_token(&mut tokens);
         }
 
-        tokens.push(Token::new(
-            TokenType::EOF,
-            "".to_string(),
-            None,
-            self.line,
-        ));
+        tokens.push(Token::new(TokenType::EOF, "".to_string(), None, self.line));
 
         tokens
     }
@@ -62,42 +57,17 @@ impl Scanner {
                 None,
                 self.line,
             )),
-            ',' => tokens.push(Token::new(
-                TokenType::Comma,
-                c.to_string(),
-                None,
-                self.line,
-            )),
-            '.' => tokens.push(Token::new(
-                TokenType::Dot,
-                c.to_string(),
-                None,
-                self.line,
-            )),
-            '-' => tokens.push(Token::new(
-                TokenType::Minus,
-                c.to_string(),
-                None,
-                self.line,
-            )),
-            '+' => tokens.push(Token::new(
-                TokenType::Plus,
-                c.to_string(),
-                None,
-                self.line,
-            )),
+            ',' => tokens.push(Token::new(TokenType::Comma, c.to_string(), None, self.line)),
+            '.' => tokens.push(Token::new(TokenType::Dot, c.to_string(), None, self.line)),
+            '-' => tokens.push(Token::new(TokenType::Minus, c.to_string(), None, self.line)),
+            '+' => tokens.push(Token::new(TokenType::Plus, c.to_string(), None, self.line)),
             ';' => tokens.push(Token::new(
                 TokenType::Semicolon,
                 c.to_string(),
                 None,
                 self.line,
             )),
-            '*' => tokens.push(Token::new(
-                TokenType::Star,
-                c.to_string(),
-                None,
-                self.line,
-            )),
+            '*' => tokens.push(Token::new(TokenType::Star, c.to_string(), None, self.line)),
             '!' => {
                 if self.match_char('=') {
                     tokens.push(Token::new(
@@ -181,10 +151,7 @@ impl Scanner {
                 }
             }
             ' ' | '\r' | '\t' => (),
-            '\n' => {
-                self.line += 1;
-                tokens.push(Token::new(TokenType::NewLine, "\n".to_string(), None, self.line));
-            }
+            '\n' => self.line += 1,
             '"' => self.string(tokens),
             '0'..='9' => self.number(tokens),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(tokens),
