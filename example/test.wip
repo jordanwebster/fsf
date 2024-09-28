@@ -1,3 +1,9 @@
 let x = "hello world";
+x = "hello jordan";
 print(x);
 
+let a = 7;
+let b = {
+    a = a + 3;
+    a
+};

@@ -50,7 +50,7 @@ fn compile_example() -> Result<(), std::io::Error> {
         .parse()
         .into_iter()
         .filter_map(|stmt| stmt.map(|s| s.compile()))
-        .join("\n");
+        .join("");
 
     let output_path = Path::new("dist").join("test.go");
     let mut output_file = File::create(&output_path)?;
