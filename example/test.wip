@@ -1,9 +1,12 @@
-let x = "hello world";
-x = "hello jordan";
-print(x);
+fn main() {
+    let x = "hello world";
+    x = "hello jordan";
+    print(x);
 
-let a = 7;
-let b = {
-    a = a + 3;
-    a
-};
+    let a = 7;
+    let b = {
+        a = a + 3;
+        a
+    };
+    print(b);
+}

@@ -1,7 +1,7 @@
 use crate::statement::Statement;
 use crate::token::{Literal, Token};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     WithBlock(ExpressionWithBlock),
     WithoutBlock(ExpressionWithoutBlock),
@@ -16,7 +16,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExpressionWithoutBlock {
     Binary { left: Box<ExpressionWithoutBlock>, operator: Token, right: Box<ExpressionWithoutBlock> },
     Grouping(Box<ExpressionWithoutBlock>),
@@ -43,15 +43,23 @@ impl ExpressionWithoutBlock {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExpressionWithBlock {
-    Block { statements: Vec<Statement>, expr: Option<ExpressionWithoutBlock>}
+    Block(Box<BlockExpression>),
+    If { expr: Box<Expression>, then: Box<ExpressionWithBlock>, r#else: Option<Box<ExpressionWithBlock>>}
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockExpression {
+    pub statements: Vec<Statement>,
+    pub expr: Option<ExpressionWithoutBlock>
 }
 
 impl ExpressionWithBlock {
     pub fn compile(&self) -> String {
         match self {
-            Self::Block {statements, expr} => { todo!() }
+            Self::Block(block) => { todo!() }
+            Self::If { expr, then, r#else} => todo!(),
         }
     }
 }

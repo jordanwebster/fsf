@@ -1,6 +1,7 @@
 use thiserror::Error;
 
-use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock};
+use crate::expression::{BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock};
+use crate::item::{Item};
 use crate::statement::{MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
 
@@ -23,12 +24,38 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Vec<Option<Statement>> {
-        let mut statements = Vec::new();
+    pub fn parse(&mut self) -> Vec<Option<Item>> {
+        let mut items = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.statement());
+            items.push(self.item());
         }
-        statements
+        items
+    }
+
+    fn item(&mut self) -> Option<Item> {
+        match self.function() {
+            Ok(item) => Some(item),
+            Err(error) => None // TODO
+        }
+    }
+
+    fn function(&mut self) -> Result<Item, ParseError> {
+        self.consume(TokenType::Fn, "Expected function declaration")?;
+        let name = match self.match_token(&[TokenType::Identifier]) {
+            true => Ok(self.previous().clone().lexeme),
+            false => Err(ParseError::SyntaxError(self.previous().clone(), "Expected identifier".to_string())),
+        }?;
+        self.consume(TokenType::LeftParen, "Expected ')'")?;
+        // TODO: Parameters
+        self.consume(TokenType::RightParen, "Expected ')'")?;
+        self.consume(TokenType::LeftBrace, "Expected '{'")?;
+        match self.block_expression() {
+            Ok(ExpressionWithBlock::Block(body)) => Ok(Item::Function { name, body: *body }),
+            e => {
+                println!("{:?}", e);
+                panic!("FIXME");
+            }
+        }
     }
 
     fn statement(&mut self) -> Option<Statement> {
@@ -123,7 +150,8 @@ impl Parser {
                                     return Err(ParseError::SyntaxError(self.peek().clone(), "Expect ';' after expression".to_string()));
                                 }
                             }
-                            Expression::WithBlock(_) => {
+                            Expression::WithBlock(e) => {
+                                println!("{:?}", e);
                                 return Err(ParseError::GrammarError)
                             }
                         }
@@ -132,7 +160,7 @@ impl Parser {
             }
         }
 
-        Ok(ExpressionWithBlock::Block { statements, expr })
+        Ok(ExpressionWithBlock::Block(BlockExpression { statements, expr }.into()))
     }
 
     fn expression_without_block(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {

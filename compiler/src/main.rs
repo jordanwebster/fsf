@@ -11,6 +11,7 @@ mod parser;
 mod scanner;
 mod statement;
 mod token;
+mod item;
 
 fn main() -> std::io::Result<()> {
     std::fs::create_dir_all("dist")?;
@@ -54,6 +55,8 @@ fn compile_example() -> Result<(), std::io::Error> {
 
     let output_path = Path::new("dist").join("test.go");
     let mut output_file = File::create(&output_path)?;
+    output_file.write_all("package main\n".as_bytes())?;
+    output_file.write_all("import \"fmt\"\n".as_bytes())?;
     output_file.write_all(output.as_bytes())?;
 
     // std::fs::create_dir_all("dist/static")?;
