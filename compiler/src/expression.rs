@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::statement::Statement;
 use crate::token::{Literal, Token};
 
@@ -46,7 +48,7 @@ impl ExpressionWithoutBlock {
 #[derive(Debug, Clone)]
 pub enum ExpressionWithBlock {
     Block(Box<BlockExpression>),
-    If { expr: Box<Expression>, then: Box<ExpressionWithBlock>, r#else: Option<Box<ExpressionWithBlock>>}
+    If { expr: Box<Expression>, then: Box<BlockExpression>, r#else: Option<Box<BlockExpression>>}
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +61,10 @@ impl ExpressionWithBlock {
     pub fn compile(&self) -> String {
         match self {
             Self::Block(block) => { todo!() }
-            Self::If { expr, then, r#else} => todo!(),
+            Self::If { expr, then, r#else} => {
+                // TODO: Handle the case there is a dangling expression
+                format!("if ({}) {{\n{}}}", expr.compile(), then.statements.iter().map(|s| s.compile()).join(""))
+            },
         }
     }
 }

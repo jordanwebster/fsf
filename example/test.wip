@@ -8,5 +8,7 @@ fn main() {
         a = a + 3;
         a
     };
-    print(b);
+    if b < 20 {
+        print(b);
+    }
 }

@@ -2,6 +2,7 @@ use itertools::Itertools;
 
 use crate::expression::{BlockExpression, ExpressionWithBlock};
 
+#[derive(Debug, Clone)]
 pub enum Item {
     Function { name: String, body: BlockExpression }
 }

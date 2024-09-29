@@ -34,8 +34,15 @@ impl Parser {
 
     fn item(&mut self) -> Option<Item> {
         match self.function() {
-            Ok(item) => Some(item),
-            Err(error) => None // TODO
+            Ok(item) => {
+                println!("Got item: {:?}", item);
+                Some(item)
+            },
+            Err(error) => {
+                // TODO: Without synchronization we can get in an infinite loop here
+                println!("Got error: {:?}", error);
+                None
+            }
         }
     }
 
@@ -49,48 +56,54 @@ impl Parser {
         // TODO: Parameters
         self.consume(TokenType::RightParen, "Expected ')'")?;
         self.consume(TokenType::LeftBrace, "Expected '{'")?;
-        match self.block_expression() {
-            Ok(ExpressionWithBlock::Block(body)) => Ok(Item::Function { name, body: *body }),
-            e => {
-                println!("{:?}", e);
-                panic!("FIXME");
-            }
-        }
+        let body = self.block_expression()?;
+        Ok(Item::Function {name, body})
     }
 
-    fn statement(&mut self) -> Option<Statement> {
-        let statement = match self.maybe_statement() {
-            Ok(MaybeStatement::Statement(statement)) => Ok(statement),
-            Ok(MaybeStatement::Expression(expression)) => {
-                match self.consume(TokenType::Semicolon, "Expect ';' after expression") {
-                    Ok(_) => Ok(Statement::Expression(expression)),
-                    Err(error) => Err(error),
-                }
-            }
-            Err(error) => Err(error),
-        };
-
-        match statement {
-            Ok(statement) => Some(statement),
-            Err(e) => {
-                println!("error: {}", e);
-                self.synchronize();
-                None
-            }
-        }
-    }
+    // fn statement(&mut self) -> Option<Statement> {
+    //     let statement = match self.maybe_statement() {
+    //         Ok(MaybeStatement::Statement(statement)) => Ok(statement),
+    //         Ok(MaybeStatement::Expression(expression)) => {
+    //             match self.consume(TokenType::Semicolon, "Expect ';' after expression") {
+    //                 Ok(_) => Ok(Statement::Expression(expression)),
+    //                 Err(error) => Err(error),
+    //             }
+    //         }
+    //         Err(error) => Err(error),
+    //     };
+    //
+    //     match statement {
+    //         Ok(statement) => {
+    //             println!("parsed statement: {:?}", statement);
+    //             Some(statement)
+    //         },
+    //         Err(e) => {
+    //             println!("error: {}", e);
+    //             self.synchronize();
+    //             None
+    //         }
+    //     }
+    // }
 
     fn maybe_statement(&mut self) -> Result<MaybeStatement, ParseError> {
         if self.match_token(&[TokenType::Let, TokenType::Print]) {
             match self.previous().token_type {
                 TokenType::Let => {
-                    Ok(MaybeStatement::Statement(self.let_declaration()?))
+                    let x = Ok(MaybeStatement::Statement(self.let_declaration()?));
+                    println!("Parsed let statement: {:?}", x);
+                    x
                 }
-                TokenType::Print => Ok(MaybeStatement::Statement(self.print_statement()?)),
+                TokenType::Print => {
+                    let x = Ok(MaybeStatement::Statement(self.print_statement()?));
+                    println!("Parsed print statement: {:?}", x);
+                    x
+                },
                 ref t => panic!("Unexpected statement type {:?}", t)
             }
         } else {
-            Ok(MaybeStatement::Expression(self.expression()?))
+            let x = Ok(MaybeStatement::Expression(self.expression()?));
+            println!("Parsed expression statement: {:?}", x);
+            x
         }
     }
 
@@ -117,7 +130,7 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expression, ParseError> {
-        if self.match_token(&[TokenType::LeftBrace]) {
+        if self.match_token(&[TokenType::LeftBrace, TokenType::If]) {
             Ok(Expression::WithBlock(self.expression_with_block()?))
         } else {
             Ok(Expression::WithoutBlock(self.expression_without_block()?))
@@ -126,12 +139,13 @@ impl Parser {
 
     fn expression_with_block(&mut self) -> Result<ExpressionWithBlock, ParseError> {
         match self.previous().token_type {
-            TokenType::LeftBrace => self.block_expression(),
+            TokenType::LeftBrace => Ok(ExpressionWithBlock::Block(self.block_expression()?.into())),
+            TokenType::If => self.if_expression(),
             _ => todo!(), // this is a compiler error
         }
     }
 
-    fn block_expression(&mut self) -> Result<ExpressionWithBlock, ParseError> {
+    fn block_expression(&mut self) -> Result<BlockExpression, ParseError> {
         let mut expr: Option<ExpressionWithoutBlock> = None;
         let mut statements: Vec<Statement> = Vec::new();
 
@@ -151,8 +165,7 @@ impl Parser {
                                 }
                             }
                             Expression::WithBlock(e) => {
-                                println!("{:?}", e);
-                                return Err(ParseError::GrammarError)
+                                statements.push(Statement::Expression(Expression::WithBlock(e)));
                             }
                         }
                     }
@@ -160,7 +173,22 @@ impl Parser {
             }
         }
 
-        Ok(ExpressionWithBlock::Block(BlockExpression { statements, expr }.into()))
+        Ok(BlockExpression { statements, expr })
+    }
+
+    fn if_expression(&mut self) -> Result<ExpressionWithBlock, ParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::LeftBrace, "Expect '{'")?;
+        let then = self.block_expression()?;
+        let r#else = match self.check(&TokenType::Else) {
+            true => {
+                self.advance();
+                self.consume(TokenType::LeftBrace, "Expect '{'")?;
+                Some(Box::new(self.block_expression()?))
+            }
+            false => None,
+        };
+        Ok(ExpressionWithBlock::If { expr: expr.into(), then: then.into(), r#else })
     }
 
     fn expression_without_block(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
