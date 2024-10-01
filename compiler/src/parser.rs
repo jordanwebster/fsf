@@ -141,7 +141,9 @@ impl Parser {
         match self.previous().token_type {
             TokenType::LeftBrace => Ok(ExpressionWithBlock::Block(self.block_expression()?.into())),
             TokenType::If => self.if_expression(),
-            _ => todo!(), // this is a compiler error
+            ref t => {
+                panic!("Unexpected token for expression with block: {:?}", t);
+            },
         }
     }
 
@@ -183,7 +185,9 @@ impl Parser {
         let r#else = match self.check(&TokenType::Else) {
             true => {
                 self.advance();
-                self.consume(TokenType::LeftBrace, "Expect '{'")?;
+                if !self.match_token(&[TokenType::LeftBrace, TokenType::If]) {
+                    return Err(ParseError::SyntaxError(self.previous().clone(), "Expect block expression or if expression".to_string()));
+                }
                 Some(Box::new(self.expression_with_block()?))
             }
             false => None,

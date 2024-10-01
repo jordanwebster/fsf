@@ -17,4 +17,12 @@ fn main() {
     } else {
         print("b is small");
     }
+
+    if b < 10 {
+        print("b is very small");
+    } else if b == 10 {
+        print("b is perfect");
+    } else {
+        print("b is pretty big");
+    }
 }
