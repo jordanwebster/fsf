@@ -11,4 +11,10 @@ fn main() {
     if b < 20 {
         print(b);
     }
+
+    if b > 20 {
+        print("b is large");
+    } else {
+        print("b is small");
+    }
 }

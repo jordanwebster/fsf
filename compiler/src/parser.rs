@@ -184,7 +184,7 @@ impl Parser {
             true => {
                 self.advance();
                 self.consume(TokenType::LeftBrace, "Expect '{'")?;
-                Some(Box::new(self.block_expression()?))
+                Some(Box::new(self.expression_with_block()?))
             }
             false => None,
         };
