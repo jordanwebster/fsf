@@ -9,9 +9,6 @@ use crate::token::{Literal, Token, TokenType};
 pub enum ParseError {
     #[error("syntax error: {1}")]
     SyntaxError(Token, String),
-
-    #[error("grammar error")]
-    GrammarError,
 }
 
 pub struct Parser {
