@@ -25,4 +25,13 @@ fn main() {
     } else {
         print("b is pretty big");
     }
+
+    let y = add_10(12);
+    if y == 22 {
+        print("y is 22");
+    }
+}
+
+fn add_10(num) {
+    num + 10
 }

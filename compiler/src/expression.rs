@@ -21,6 +21,7 @@ impl Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionWithoutBlock {
     Binary { left: Box<ExpressionWithoutBlock>, operator: Token, right: Box<ExpressionWithoutBlock> },
+    Call { callee: Box<ExpressionWithoutBlock>, arguments: Vec<Expression> },
     Grouping(Box<ExpressionWithoutBlock>),
     Literal(Literal),
     Unary { operator: Token, right: Box<ExpressionWithoutBlock> },
@@ -32,6 +33,7 @@ impl ExpressionWithoutBlock {
     pub fn compile(&self) -> String {
         match self {
             Self::Binary { left, operator, right } => format!("{} {} {}", left.compile(), operator.lexeme, right.compile()),
+            Self::Call { callee, arguments } => format!("{}({})", callee.compile(), arguments.iter().map(|e| e.compile()).join(", ")),
             Self::Grouping(expression) => todo!(),
             Self::Literal(Literal::Number(number)) => format!("{}", number),
             Self::Literal(Literal::String(string)) => format!("\"{}\"", string),

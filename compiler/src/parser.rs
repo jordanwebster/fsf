@@ -52,12 +52,24 @@ impl Parser {
             true => Ok(self.previous().clone().lexeme),
             false => Err(ParseError::SyntaxError(self.previous().clone(), "Expected identifier".to_string())),
         }?;
-        self.consume(TokenType::LeftParen, "Expected ')'")?;
-        // TODO: Parameters
+
+        self.consume(TokenType::LeftParen, "Expected '('")?;
+        let mut parameters = Vec::new();
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                let token = self.consume(TokenType::Identifier, "Expect parameter name")?;
+                parameters.push(token.clone().lexeme);
+
+                if !self.match_token(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
         self.consume(TokenType::RightParen, "Expected ')'")?;
+
         self.consume(TokenType::LeftBrace, "Expected '{'")?;
         let body = self.block_expression()?;
-        Ok(Item::Function {name, body})
+        Ok(Item::Function {name, parameters, body})
     }
 
     // fn statement(&mut self) -> Option<Statement> {
@@ -295,7 +307,33 @@ impl Parser {
             });
         }
 
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut expr = self.primary()?;
+
+        while self.match_token(&[TokenType::LeftParen]) {
+            expr = self.finish_call(expr)?;
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: ExpressionWithoutBlock) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut arguments: Vec<Expression> = Vec::new();
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                arguments.push(self.expression()?);
+                if !self.match_token(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expect ')' after arguments")?;
+
+        Ok(ExpressionWithoutBlock::Call{ callee: callee.into(), arguments})
     }
 
     fn primary(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
