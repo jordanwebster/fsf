@@ -255,6 +255,7 @@ impl Scanner {
             "mut" => TokenType::Mut,
             "print" => TokenType::Print,
             "fn" => TokenType::Fn,
+            "cmpnt" => TokenType::Cmpnt,
             "if" => TokenType::If,
             "else" => TokenType::Else,
             _ => TokenType::Identifier,

@@ -30,8 +30,17 @@ fn main() {
     if y == 22 {
         print("y is 22");
     }
+
+    let z = Button();
+    if z == 10 {
+        print("button is 10");
+    }
 }
 
 fn add_10(num) {
     num + 10
+}
+
+cmpnt Button() {
+    10
 }

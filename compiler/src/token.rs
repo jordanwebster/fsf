@@ -56,6 +56,7 @@ pub enum TokenType {
     True,
     Print,
     Fn,
+    Cmpnt,
     If,
     Else,
 

@@ -44,7 +44,11 @@ impl Parser {
     }
 
     fn function(&mut self) -> Result<Item, ParseError> {
-        self.consume(TokenType::Fn, "Expected function declaration")?;
+        if !self.match_token(&[TokenType::Fn, TokenType::Cmpnt]) {
+            return Err(ParseError::SyntaxError(self.peek().clone(), "Expected function declaration".to_string()));
+        }
+
+        let token = self.previous().clone();
         let name = match self.match_token(&[TokenType::Identifier]) {
             true => Ok(self.previous().clone().lexeme),
             false => Err(ParseError::SyntaxError(self.previous().clone(), "Expected identifier".to_string())),
@@ -66,7 +70,11 @@ impl Parser {
 
         self.consume(TokenType::LeftBrace, "Expected '{'")?;
         let body = self.block_expression()?;
-        Ok(Item::Function {name, parameters, body})
+        match token.token_type {
+            TokenType::Fn => Ok(Item::Function {name, parameters, body}),
+            TokenType::Cmpnt => Ok(Item::Component {name, parameters, body}),
+            _ => panic!("Expected function or component"),
+        }
     }
 
     // fn statement(&mut self) -> Option<Statement> {
