@@ -41,8 +41,10 @@ pub enum TokenType {
     EqualEqual,
     Less,
     LessEqual,
+    LessSlash,
     Greater,
     GreaterEqual,
+    SlashGreater,
 
     // Literals.
     Identifier,

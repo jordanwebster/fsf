@@ -110,6 +110,13 @@ impl Scanner {
                         None,
                         self.line,
                     ));
+                } else if self.match_char('/') {
+                    tokens.push(Token::new(
+                        TokenType::LessSlash,
+                        "</".to_string(),
+                        None,
+                        self.line,
+                    ))
                 } else {
                     tokens.push(Token::new(
                         TokenType::Less,
@@ -141,6 +148,13 @@ impl Scanner {
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
+                } else if self.match_char('>') {
+                    tokens.push(Token::new(
+                        TokenType::SlashGreater,
+                        "/>".to_string(),
+                        None,
+                        self.line
+                    ))
                 } else {
                     tokens.push(Token::new(
                         TokenType::Slash,

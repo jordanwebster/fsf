@@ -37,7 +37,7 @@ impl Parser {
             },
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
-                println!("Got error: {:?}", error);
+                panic!("Got error: {:?}", error);
                 None
             }
         }
@@ -359,8 +359,28 @@ impl Parser {
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
             return Ok(ExpressionWithoutBlock::Grouping(expr.into()));
         }
+        if self.match_token(&[TokenType::Less]) && self.peek().token_type == TokenType::Identifier {
+           return self.html();
+        }
 
         Err(ParseError::SyntaxError(self.peek().clone(), "Expect expression.".to_string()))
+    }
+
+    fn html(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let name = self.consume(TokenType::Identifier, "Expect identifier")?.clone();
+        // TODO: Parse attributes
+        self.consume(TokenType::Greater, "Expect to close html tag")?;
+
+        // TODO: Allow HTML without an inner expression
+        let inner = self.expression()?;
+        self.consume(TokenType::LessSlash, "Expect closing HTML tag")?;
+        let closing_name = self.consume(TokenType::Identifier, "Expect identifier")?;
+        if name.lexeme != closing_name.lexeme {
+            return Err(ParseError::SyntaxError(closing_name.clone(), "Closing tag does not match opening tag".to_string()))?;
+        }
+        self.consume(TokenType::Greater, "Expect to close html tag")?;
+
+        Ok(ExpressionWithoutBlock::Html { name, inner: inner.into() })
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, ParseError> {

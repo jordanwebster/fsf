@@ -27,6 +27,7 @@ pub enum ExpressionWithoutBlock {
     Unary { operator: Token, right: Box<ExpressionWithoutBlock> },
     Variable(Token),
     Assignment { name: Token, value: Box<ExpressionWithoutBlock> },
+    Html { name: Token, inner: Box<Expression>},
 }
 
 impl ExpressionWithoutBlock {
@@ -43,6 +44,7 @@ impl ExpressionWithoutBlock {
             Self::Unary { operator, right } => todo!(),
             Self::Variable(identifier) => format!("{}", identifier.value.clone().unwrap()),
             Self::Assignment { name, value } => format!("{} = {}", name.lexeme, value.clone().compile()),
+            Self::Html { name, inner } => format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme),
         }
     }
 }

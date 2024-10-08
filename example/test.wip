@@ -32,9 +32,7 @@ fn main() {
     }
 
     let z = Button();
-    if z == 10 {
-        print("button is 10");
-    }
+    print(z);
 }
 
 fn add_10(num) {
@@ -42,5 +40,9 @@ fn add_10(num) {
 }
 
 cmpnt Button() {
-    10
+    <html>
+        <button>
+            "Press Me"
+        </button>
+    </html>
 }
