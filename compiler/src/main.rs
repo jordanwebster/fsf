@@ -14,10 +14,11 @@ mod token;
 mod item;
 
 fn main() -> std::io::Result<()> {
-    std::fs::create_dir_all("dist")?;
-    compile_example()?;
-    // setup_runtime()?;
-    // serve()
+    std::fs::create_dir_all("dist/runtime")?;
+    // compile_example()?;
+    compile_index()?;
+    setup_runtime()?;
+    serve()?;
     Ok(())
 }
 
@@ -56,7 +57,10 @@ fn compile_example() -> Result<(), std::io::Error> {
     let output_path = Path::new("dist").join("test.go");
     let mut output_file = File::create(&output_path)?;
     output_file.write_all("package main\n".as_bytes())?;
-    output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    // TODO: Propagate this information up via the compiler
+    if output.contains("fmt.Println") {
+        output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    }
     output_file.write_all(output.as_bytes())?;
 
     // std::fs::create_dir_all("dist/static")?;
@@ -72,6 +76,41 @@ fn compile_example() -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn compile_index() -> Result<(), std::io::Error> {
+    let mut file = File::open("../example/index.wip")?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    let mut scanner = Scanner::new(contents);
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    let output = parser
+        .parse()
+        .into_iter()
+        .filter_map(|stmt| stmt.map(|s| s.compile()))
+        .join("");
+
+    let output_path = Path::new("dist/runtime").join("index.go");
+    let mut output_file = File::create(&output_path)?;
+    output_file.write_all("package main\n".as_bytes())?;
+    // TODO: Propagate this information up via the compiler
+    if output.contains("fmt.Println") {
+        output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    }
+    output_file.write_all(output.as_bytes())?;
+
+    // std::fs::create_dir_all("dist/static")?;
+    //
+    // let mut file = File::open("../example/index.zhtml")?;
+    // let mut contents = String::new();
+    // file.read_to_string(&mut contents)?;
+    //
+    // let output_path = Path::new("dist/static").join("index.html");
+    // let mut output_file = File::create(output_path)?;
+    // output_file.write_all(contents.as_bytes())?;
+
+    Ok(())
+}
 fn setup_runtime() -> Result<(), std::io::Error> {
     let output = Command::new("cp")
         .arg("-R")

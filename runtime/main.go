@@ -3,14 +3,15 @@ package main
 import (
 	"log"
 	"net/http"
+	"io"
 )
 
-func main() {
-	// Create a file server handler for the current directory
-	fs := http.FileServer(http.Dir("../static"))
+func h1(w http.ResponseWriter, _ *http.Request) {
+    io.WriteString(w, index())
+}
 
-	// Handle all requests with the file server
-	http.Handle("/", fs)
+func main() {
+	http.HandleFunc("/", h1)
 
 	// Start the server on port 8080
 	log.Println("Starting server on :8080")

@@ -1,0 +1,7 @@
+cmpnt index() {
+    <html>
+        <button>
+            "Press Me"
+        </button>
+    </html>
+}
