@@ -1,121 +1,157 @@
 use crate::parser::Parser;
 use crate::scanner::Scanner;
+use anyhow::anyhow;
+use anyhow::Result;
+use clap::Parser as _;
 use itertools::Itertools;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 mod expression;
+mod item;
 mod parser;
 mod scanner;
 mod statement;
 mod token;
-mod item;
 
-fn main() -> std::io::Result<()> {
-    std::fs::create_dir_all("dist/runtime")?;
-    // compile_example()?;
-    compile_index()?;
-    setup_runtime()?;
-    serve()?;
-    Ok(())
+#[derive(clap::Parser)]
+#[command(name = "fsf")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-fn serve() -> Result<(), std::io::Error> {
-    std::env::set_current_dir("dist/runtime")?;
+#[derive(clap::Subcommand)]
+enum Commands {
+    /// Start serving from the specified path
+    Serve {
+        /// The path to serve from
+        path: PathBuf,
+    },
+    /// Run from the specified path
+    Run {
+        /// The path to run from
+        path: PathBuf,
+    },
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    std::fs::remove_dir_all(".dist")?;
+    std::fs::create_dir_all(".dist/runtime")?;
+    match &cli.command {
+        Commands::Serve { path } => serve(path),
+        Commands::Run { path } => run(path),
+    }
+    // // compile_example()?;
+    // compile_index()?;
+    // setup_runtime()?;
+    // serve()?;
+    // Ok(())
+}
+
+fn serve(path: &Path) -> Result<()> {
+    // TODO: Handle multiple routes
+    let mut file = File::open(path.join("index.fsf"))?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    let mut scanner = Scanner::new(contents);
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    let output = parser
+        .parse()
+        .into_iter()
+        .filter_map(|stmt| stmt.map(|s| s.compile()))
+        .join("");
+
+    let output_path = Path::new(".dist/runtime").join("index.go");
+    let mut output_file = File::create(&output_path)?;
+    output_file.write_all("package main\n".as_bytes())?;
+    // TODO: Propagate this information up via the parser
+    if output.contains("fmt.Println") {
+        output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    }
+    output_file.write_all(output.as_bytes())?;
+
+    setup_runtime()?;
+
+    std::env::set_current_dir(".dist/runtime")?;
     let output = Command::new("go").arg("run").arg(".").output()?;
 
-    if !output.status.success() {
-        eprintln!(
-            "Failed to run Go command: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Command execution failed",
-        ));
+    match output.status.success() {
+        true => Ok(()),
+        false => {
+            eprintln!(
+                "Failed to run Go command: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            Err(anyhow!("Failed to run Go command"))
+        }
     }
-
-    Ok(())
 }
 
-fn compile_example() -> Result<(), std::io::Error> {
-    let mut file = File::open("../example/test.wip")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+fn run(path: &Path) -> Result<()> {
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
 
-    let mut scanner = Scanner::new(contents);
-    let tokens = scanner.scan_tokens();
-    let mut parser = Parser::new(tokens);
-    let output = parser
-        .parse()
-        .into_iter()
-        .filter_map(|stmt| stmt.map(|s| s.compile()))
-        .join("");
+        if path.is_file() {
+            let mut file = File::open(&path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
 
-    let output_path = Path::new("dist").join("test.go");
-    let mut output_file = File::create(&output_path)?;
-    output_file.write_all("package main\n".as_bytes())?;
-    // TODO: Propagate this information up via the compiler
-    if output.contains("fmt.Println") {
-        output_file.write_all("import \"fmt\"\n".as_bytes())?;
+            let mut scanner = Scanner::new(contents);
+            let tokens = scanner.scan_tokens();
+            let mut parser = Parser::new(tokens);
+            let output = parser
+                .parse()
+                .into_iter()
+                .filter_map(|stmt| stmt.map(|s| s.compile()))
+                .join("");
+
+            let mut output_path = Path::new(".dist/runtime").join(path.file_stem().unwrap());
+            output_path.set_extension("go");
+            let mut output_file = File::create(&output_path)?;
+            output_file.write_all("package main\n".as_bytes())?;
+            // TODO: Propagate this information up via the parser
+            if output.contains("fmt.Println") {
+                output_file.write_all("import \"fmt\"\n".as_bytes())?;
+            }
+            output_file.write_all(output.as_bytes())?;
+        }
     }
-    output_file.write_all(output.as_bytes())?;
 
-    // std::fs::create_dir_all("dist/static")?;
-    //
-    // let mut file = File::open("../example/index.zhtml")?;
-    // let mut contents = String::new();
-    // file.read_to_string(&mut contents)?;
-    //
-    // let output_path = Path::new("dist/static").join("index.html");
-    // let mut output_file = File::create(output_path)?;
-    // output_file.write_all(contents.as_bytes())?;
+    std::env::set_current_dir(".dist/runtime")?;
+    let _ = Command::new("go")
+        .arg("mod")
+        .arg("init")
+        .arg("fsf")
+        .output()?;
+    let output = Command::new("go").arg("run").arg(".").output()?;
 
-    Ok(())
-}
-
-fn compile_index() -> Result<(), std::io::Error> {
-    let mut file = File::open("../example/index.wip")?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-
-    let mut scanner = Scanner::new(contents);
-    let tokens = scanner.scan_tokens();
-    let mut parser = Parser::new(tokens);
-    let output = parser
-        .parse()
-        .into_iter()
-        .filter_map(|stmt| stmt.map(|s| s.compile()))
-        .join("");
-
-    let output_path = Path::new("dist/runtime").join("index.go");
-    let mut output_file = File::create(&output_path)?;
-    output_file.write_all("package main\n".as_bytes())?;
-    // TODO: Propagate this information up via the compiler
-    if output.contains("fmt.Println") {
-        output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    match output.status.success() {
+        true => {
+            print!("{}", String::from_utf8_lossy(&output.stdout));
+            Ok(())
+        }
+        false => {
+            eprintln!(
+                "Failed to run Go command: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            Err(anyhow!("Failed to run Go command"))
+        }
     }
-    output_file.write_all(output.as_bytes())?;
-
-    // std::fs::create_dir_all("dist/static")?;
-    //
-    // let mut file = File::open("../example/index.zhtml")?;
-    // let mut contents = String::new();
-    // file.read_to_string(&mut contents)?;
-    //
-    // let output_path = Path::new("dist/static").join("index.html");
-    // let mut output_file = File::create(output_path)?;
-    // output_file.write_all(contents.as_bytes())?;
-
-    Ok(())
 }
 fn setup_runtime() -> Result<(), std::io::Error> {
     let output = Command::new("cp")
         .arg("-R")
         .arg("../runtime")
-        .arg("./dist")
+        .arg("./.dist")
         .output()?;
 
     Ok(if !output.status.success() {

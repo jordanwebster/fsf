@@ -153,7 +153,7 @@ impl Scanner {
                         TokenType::SlashGreater,
                         "/>".to_string(),
                         None,
-                        self.line
+                        self.line,
                     ))
                 } else {
                     tokens.push(Token::new(

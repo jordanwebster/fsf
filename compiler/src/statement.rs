@@ -1,7 +1,7 @@
-use itertools::Itertools;
 use crate::expression::Expression;
 use crate::expression::ExpressionWithBlock;
 use crate::token::Token;
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub enum MaybeStatement {
@@ -22,18 +22,26 @@ impl Statement {
             Self::Print(expr) => format!("fmt.Println({})\n", expr.compile()),
             Self::Expression(expr) => format!("{}\n", expr.compile()),
             Self::Let(token, expr) => match expr {
-                Expression::WithoutBlock(expr) => format!("{} := {}\n", token.value.clone().unwrap(), expr.compile()),
+                Expression::WithoutBlock(expr) => {
+                    format!("{} := {}\n", token.value.clone().unwrap(), expr.compile())
+                }
                 Expression::WithBlock(expr) => match expr {
                     ExpressionWithBlock::Block(block) => {
-                        let statements_str = block.statements.iter().map(|stmt| stmt.compile()).join("");
+                        let statements_str =
+                            block.statements.iter().map(|stmt| stmt.compile()).join("");
                         if let Some(ref expr) = block.expr {
-                            format!("{}{} := {}\n", statements_str, token.value.clone().unwrap(), expr.compile())
+                            format!(
+                                "{}{} := {}\n",
+                                statements_str,
+                                token.value.clone().unwrap(),
+                                expr.compile()
+                            )
                         } else {
                             statements_str
                         }
-                    },
-                    ExpressionWithBlock::If {expr, then, r#else } => todo!(),
-                }
+                    }
+                    ExpressionWithBlock::If { expr, then, r#else } => todo!(),
+                },
             },
         }
     }

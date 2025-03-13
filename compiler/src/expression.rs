@@ -20,21 +20,45 @@ impl Expression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionWithoutBlock {
-    Binary { left: Box<ExpressionWithoutBlock>, operator: Token, right: Box<ExpressionWithoutBlock> },
-    Call { callee: Box<ExpressionWithoutBlock>, arguments: Vec<Expression> },
+    Binary {
+        left: Box<ExpressionWithoutBlock>,
+        operator: Token,
+        right: Box<ExpressionWithoutBlock>,
+    },
+    Call {
+        callee: Box<ExpressionWithoutBlock>,
+        arguments: Vec<Expression>,
+    },
     Grouping(Box<ExpressionWithoutBlock>),
     Literal(Literal),
-    Unary { operator: Token, right: Box<ExpressionWithoutBlock> },
+    Unary {
+        operator: Token,
+        right: Box<ExpressionWithoutBlock>,
+    },
     Variable(Token),
-    Assignment { name: Token, value: Box<ExpressionWithoutBlock> },
-    Html { name: Token, inner: Box<Expression>},
+    Assignment {
+        name: Token,
+        value: Box<ExpressionWithoutBlock>,
+    },
+    Html {
+        name: Token,
+        inner: Box<Expression>,
+    },
 }
 
 impl ExpressionWithoutBlock {
     pub fn compile(&self) -> String {
         match self {
-            Self::Binary { left, operator, right } => format!("{} {} {}", left.compile(), operator.lexeme, right.compile()),
-            Self::Call { callee, arguments } => format!("{}({})", callee.compile(), arguments.iter().map(|e| e.compile()).join(", ")),
+            Self::Binary {
+                left,
+                operator,
+                right,
+            } => format!("{} {} {}", left.compile(), operator.lexeme, right.compile()),
+            Self::Call { callee, arguments } => format!(
+                "{}({})",
+                callee.compile(),
+                arguments.iter().map(|e| e.compile()).join(", ")
+            ),
             Self::Grouping(expression) => todo!(),
             Self::Literal(Literal::Number(number)) => format!("{}", number),
             Self::Literal(Literal::String(string)) => format!("\"{}\"", string),
@@ -43,8 +67,12 @@ impl ExpressionWithoutBlock {
             Self::Literal(Literal::False) => "false".to_string(),
             Self::Unary { operator, right } => todo!(),
             Self::Variable(identifier) => format!("{}", identifier.value.clone().unwrap()),
-            Self::Assignment { name, value } => format!("{} = {}", name.lexeme, value.clone().compile()),
-            Self::Html { name, inner } => format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme),
+            Self::Assignment { name, value } => {
+                format!("{} = {}", name.lexeme, value.clone().compile())
+            }
+            Self::Html { name, inner } => {
+                format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme)
+            }
         }
     }
 }
@@ -52,7 +80,11 @@ impl ExpressionWithoutBlock {
 #[derive(Debug, Clone)]
 pub enum ExpressionWithBlock {
     Block(Box<BlockExpression>),
-    If { expr: Box<Expression>, then: Box<BlockExpression>, r#else: Option<Box<ExpressionWithBlock>> },
+    If {
+        expr: Box<Expression>,
+        then: Box<BlockExpression>,
+        r#else: Option<Box<ExpressionWithBlock>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -64,10 +96,14 @@ pub struct BlockExpression {
 impl ExpressionWithBlock {
     pub fn compile(&self) -> String {
         match self {
-            Self::Block(block) => { block.statements.iter().map(|s| s.compile()).join("") }
+            Self::Block(block) => block.statements.iter().map(|s| s.compile()).join(""),
             Self::If { expr, then, r#else } => {
                 // TODO: Handle the case there is a dangling expression
-                let mut s = format!("if ({}) {{\n{}}}", expr.compile(), then.statements.iter().map(|s| s.compile()).join(""));
+                let mut s = format!(
+                    "if ({}) {{\n{}}}",
+                    expr.compile(),
+                    then.statements.iter().map(|s| s.compile()).join("")
+                );
                 if let Some(r#else) = r#else {
                     s = format!("{} else {{\n{}}}\n", s, r#else.compile());
                 }

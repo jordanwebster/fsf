@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::expression::{BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock};
-use crate::item::{Item};
+use crate::item::Item;
 use crate::statement::{MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
 
@@ -34,7 +34,7 @@ impl Parser {
             Ok(item) => {
                 println!("Got item: {:?}", item);
                 Some(item)
-            },
+            }
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
                 panic!("Got error: {:?}", error);
@@ -45,13 +45,19 @@ impl Parser {
 
     fn function(&mut self) -> Result<Item, ParseError> {
         if !self.match_token(&[TokenType::Fn, TokenType::Cmpnt]) {
-            return Err(ParseError::SyntaxError(self.peek().clone(), "Expected function declaration".to_string()));
+            return Err(ParseError::SyntaxError(
+                self.peek().clone(),
+                "Expected function declaration".to_string(),
+            ));
         }
 
         let token = self.previous().clone();
         let name = match self.match_token(&[TokenType::Identifier]) {
             true => Ok(self.previous().clone().lexeme),
-            false => Err(ParseError::SyntaxError(self.previous().clone(), "Expected identifier".to_string())),
+            false => Err(ParseError::SyntaxError(
+                self.previous().clone(),
+                "Expected identifier".to_string(),
+            )),
         }?;
 
         self.consume(TokenType::LeftParen, "Expected '('")?;
@@ -71,8 +77,16 @@ impl Parser {
         self.consume(TokenType::LeftBrace, "Expected '{'")?;
         let body = self.block_expression()?;
         match token.token_type {
-            TokenType::Fn => Ok(Item::Function {name, parameters, body}),
-            TokenType::Cmpnt => Ok(Item::Component {name, parameters, body}),
+            TokenType::Fn => Ok(Item::Function {
+                name,
+                parameters,
+                body,
+            }),
+            TokenType::Cmpnt => Ok(Item::Component {
+                name,
+                parameters,
+                body,
+            }),
             _ => panic!("Expected function or component"),
         }
     }
@@ -114,8 +128,8 @@ impl Parser {
                     let x = Ok(MaybeStatement::Statement(self.print_statement()?));
                     println!("Parsed print statement: {:?}", x);
                     x
-                },
-                ref t => panic!("Unexpected statement type {:?}", t)
+                }
+                ref t => panic!("Unexpected statement type {:?}", t),
             }
         } else {
             let x = Ok(MaybeStatement::Expression(self.expression()?));
@@ -129,7 +143,9 @@ impl Parser {
     }
 
     fn let_declaration(&mut self) -> Result<Statement, ParseError> {
-        let name = self.consume(TokenType::Identifier, "Expect variable name")?.clone();
+        let name = self
+            .consume(TokenType::Identifier, "Expect variable name")?
+            .clone();
 
         self.consume(TokenType::Equal, "All variables must be initialized")?;
         let initializer = self.expression()?;
@@ -160,7 +176,7 @@ impl Parser {
             TokenType::If => self.if_expression(),
             ref t => {
                 panic!("Unexpected token for expression with block: {:?}", t);
-            },
+            }
         }
     }
 
@@ -180,7 +196,10 @@ impl Parser {
                             Expression::WithoutBlock(expression) => {
                                 expr = Some(expression);
                                 if !self.check(&TokenType::RightBrace) {
-                                    return Err(ParseError::SyntaxError(self.peek().clone(), "Expect ';' after expression".to_string()));
+                                    return Err(ParseError::SyntaxError(
+                                        self.peek().clone(),
+                                        "Expect ';' after expression".to_string(),
+                                    ));
                                 }
                             }
                             Expression::WithBlock(e) => {
@@ -203,13 +222,20 @@ impl Parser {
             true => {
                 self.advance();
                 if !self.match_token(&[TokenType::LeftBrace, TokenType::If]) {
-                    return Err(ParseError::SyntaxError(self.previous().clone(), "Expect block expression or if expression".to_string()));
+                    return Err(ParseError::SyntaxError(
+                        self.previous().clone(),
+                        "Expect block expression or if expression".to_string(),
+                    ));
                 }
                 Some(Box::new(self.expression_with_block()?))
             }
             false => None,
         };
-        Ok(ExpressionWithBlock::If { expr: expr.into(), then: then.into(), r#else })
+        Ok(ExpressionWithBlock::If {
+            expr: expr.into(),
+            then: then.into(),
+            r#else,
+        })
     }
 
     fn expression_without_block(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -224,7 +250,10 @@ impl Parser {
             let value = self.assignment()?;
 
             if let ExpressionWithoutBlock::Variable(name) = expr {
-                return Ok(ExpressionWithoutBlock::Assignment { name, value: value.into() });
+                return Ok(ExpressionWithoutBlock::Assignment {
+                    name,
+                    value: value.into(),
+                });
             }
 
             // TODO: Report (but don't throw error)
@@ -325,7 +354,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn finish_call(&mut self, callee: ExpressionWithoutBlock) -> Result<ExpressionWithoutBlock, ParseError> {
+    fn finish_call(
+        &mut self,
+        callee: ExpressionWithoutBlock,
+    ) -> Result<ExpressionWithoutBlock, ParseError> {
         let mut arguments: Vec<Expression> = Vec::new();
         if !self.check(&TokenType::RightParen) {
             loop {
@@ -338,7 +370,10 @@ impl Parser {
 
         self.consume(TokenType::RightParen, "Expect ')' after arguments")?;
 
-        Ok(ExpressionWithoutBlock::Call{ callee: callee.into(), arguments})
+        Ok(ExpressionWithoutBlock::Call {
+            callee: callee.into(),
+            arguments,
+        })
     }
 
     fn primary(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -349,7 +384,9 @@ impl Parser {
             return Ok(ExpressionWithoutBlock::Literal(Literal::True));
         }
         if self.match_token(&[TokenType::Number, TokenType::String]) {
-            return Ok(ExpressionWithoutBlock::Literal(self.previous().value.clone().unwrap()));
+            return Ok(ExpressionWithoutBlock::Literal(
+                self.previous().value.clone().unwrap(),
+            ));
         }
         if self.match_token(&[TokenType::Identifier]) {
             return Ok(ExpressionWithoutBlock::Variable(self.previous().clone()));
@@ -360,14 +397,19 @@ impl Parser {
             return Ok(ExpressionWithoutBlock::Grouping(expr.into()));
         }
         if self.match_token(&[TokenType::Less]) && self.peek().token_type == TokenType::Identifier {
-           return self.html();
+            return self.html();
         }
 
-        Err(ParseError::SyntaxError(self.peek().clone(), "Expect expression.".to_string()))
+        Err(ParseError::SyntaxError(
+            self.peek().clone(),
+            "Expect expression.".to_string(),
+        ))
     }
 
     fn html(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
-        let name = self.consume(TokenType::Identifier, "Expect identifier")?.clone();
+        let name = self
+            .consume(TokenType::Identifier, "Expect identifier")?
+            .clone();
         // TODO: Parse attributes
         self.consume(TokenType::Greater, "Expect to close html tag")?;
 
@@ -376,17 +418,26 @@ impl Parser {
         self.consume(TokenType::LessSlash, "Expect closing HTML tag")?;
         let closing_name = self.consume(TokenType::Identifier, "Expect identifier")?;
         if name.lexeme != closing_name.lexeme {
-            return Err(ParseError::SyntaxError(closing_name.clone(), "Closing tag does not match opening tag".to_string()))?;
+            return Err(ParseError::SyntaxError(
+                closing_name.clone(),
+                "Closing tag does not match opening tag".to_string(),
+            ))?;
         }
         self.consume(TokenType::Greater, "Expect to close html tag")?;
 
-        Ok(ExpressionWithoutBlock::Html { name, inner: inner.into() })
+        Ok(ExpressionWithoutBlock::Html {
+            name,
+            inner: inner.into(),
+        })
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, ParseError> {
         match self.check(&token_type) {
             true => Ok(self.advance()),
-            false => Err(ParseError::SyntaxError(self.peek().clone(), message.to_string())),
+            false => Err(ParseError::SyntaxError(
+                self.peek().clone(),
+                message.to_string(),
+            )),
         }
     }
 
