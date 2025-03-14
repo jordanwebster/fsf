@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::expression::{BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock};
-use crate::item::Item;
+use crate::item::{Item, Parameter};
 use crate::statement::{MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
 
@@ -64,8 +64,19 @@ impl Parser {
         let mut parameters = Vec::new();
         if !self.check(&TokenType::RightParen) {
             loop {
-                let token = self.consume(TokenType::Identifier, "Expect parameter name")?;
-                parameters.push(token.clone().lexeme);
+                let name = self
+                    .consume(TokenType::Identifier, "Expect parameter name")?
+                    .lexeme
+                    .clone();
+                self.consume(TokenType::Colon, "Expect type annotation")?;
+                let type_annotation = self
+                    .consume(TokenType::Identifier, "Expect type annotation")?
+                    .lexeme
+                    .clone();
+                parameters.push(Parameter {
+                    name,
+                    type_annotation,
+                });
 
                 if !self.match_token(&[TokenType::Comma]) {
                     break;
@@ -74,6 +85,20 @@ impl Parser {
         }
         self.consume(TokenType::RightParen, "Expected ')'")?;
 
+        let return_type = match token.token_type {
+            TokenType::Fn => {
+                self.consume(TokenType::MinusGreater, "Expect return type")?;
+                match self.match_token(&[TokenType::Identifier]) {
+                    true => Ok(Some(self.previous().clone().lexeme)),
+                    false => Err(ParseError::SyntaxError(
+                        self.previous().clone(),
+                        "Expected return type".to_string(),
+                    )),
+                }?
+            }
+            _ => None,
+        };
+
         self.consume(TokenType::LeftBrace, "Expected '{'")?;
         let body = self.block_expression()?;
         match token.token_type {
@@ -81,6 +106,7 @@ impl Parser {
                 name,
                 parameters,
                 body,
+                return_type: return_type.unwrap(),
             }),
             TokenType::Cmpnt => Ok(Item::Component {
                 name,

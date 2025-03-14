@@ -1,4 +1,4 @@
-fn main() {
+fn main() -> void {
     let x = "hello world";
     x = "hello jordan";
     print(x);
@@ -33,10 +33,21 @@ fn main() {
 
     let z = Button();
     print(z);
+
+    multiple_types(8, "hello from a function");
 }
 
-fn add_10(num) {
+fn add_10(num: int) -> int {
     num + 10
+}
+
+fn multiple_types(num: int, message: str) -> void {
+    print(message);
+    if num < 10 {
+        print("passed number < 10");
+    } else {
+        print("passed number is >= 10");
+    }
 }
 
 cmpnt Button() {

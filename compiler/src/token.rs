@@ -30,6 +30,7 @@ pub enum TokenType {
     Dot,
     Minus,
     Plus,
+    Colon,
     Semicolon,
     Slash,
     Star,
@@ -45,6 +46,7 @@ pub enum TokenType {
     Greater,
     GreaterEqual,
     SlashGreater,
+    MinusGreater,
 
     // Literals.
     Identifier,

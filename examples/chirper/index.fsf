@@ -1,0 +1,51 @@
+struct Chirp = {
+    message: str;
+    author: str;
+}
+
+let mut chirps: Vec<Chirp> = Vec.new();
+
+cmpnt index() {
+    let chirps = load_chirps();
+
+    <html>
+        <CreateChirp />
+        <br />
+        <ChirpsList chirps=chirps />
+    </html>
+}
+
+cmpnt CreateChirp() {
+    <form onsubmit=submit>
+        <input type="text" id="message" name="message" />
+        <button type="submit" />
+    </form>
+}
+
+fn submit(message: str) {
+    save_chirp(message, "Jordan Webster");
+}
+
+fn save_chirp(message: str, author: str) {
+    chirps.push(Chirp {
+        message,
+        author,
+    });
+}
+
+struct ChirpsListProps = {
+    chirps: Vec<Chirp>,
+}
+
+cmpnt ChirpsList(props: ChirpsListProps) {
+    props.chirps.map((chirp) =>
+        <div>
+            <span>chirp.message</span>
+            <span>chirp.author</span>
+        </div>
+    )
+}
+
+fn load_chirps() {
+    chirps
+}

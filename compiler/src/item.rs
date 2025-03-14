@@ -3,16 +3,23 @@ use itertools::Itertools;
 use crate::expression::BlockExpression;
 
 #[derive(Debug, Clone)]
+pub struct Parameter {
+    pub name: String,
+    pub type_annotation: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum Item {
     Function {
         name: String,
-        parameters: Vec<String>,
+        parameters: Vec<Parameter>,
         body: BlockExpression,
+        return_type: String,
     },
     // TODO: Merge into function once we have typing
     Component {
         name: String,
-        parameters: Vec<String>,
+        parameters: Vec<Parameter>,
         body: BlockExpression,
     },
 }
@@ -24,15 +31,29 @@ impl Item {
                 name,
                 parameters,
                 body,
+                return_type,
             } => {
                 let statements = body.statements.iter().map(|s| s.compile()).join("");
-                let params = parameters.iter().map(|p| format!("{p} int")).join(", ");
-                // TODO: Add proper typing and don't assume all parameters are ints
+                let params = parameters
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "{} {}",
+                            p.name,
+                            match p.type_annotation.as_str() {
+                                "int" => "int",
+                                "str" => "string",
+                                other => other,
+                            }
+                        )
+                    })
+                    .join(", ");
                 match body.expr {
                     Some(ref expr) => format!(
-                        "func {}({}) int {{\n{}\nreturn {}\n}}\n",
+                        "func {}({}) {} {{\n{}\nreturn {}\n}}\n",
                         name,
                         params,
+                        return_type,
                         statements,
                         expr.compile()
                     ),
@@ -45,8 +66,20 @@ impl Item {
                 body,
             } => {
                 let statements = body.statements.iter().map(|s| s.compile()).join("");
-                let params = parameters.iter().map(|p| format!("{p} string")).join(", ");
-                // TODO: Add proper typing and don't assume all parameters are ints
+                let params = parameters
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "{} {}",
+                            p.name,
+                            match p.type_annotation.as_str() {
+                                "int" => "int",
+                                "str" => "string",
+                                other => other,
+                            }
+                        )
+                    })
+                    .join(", ");
                 match body.expr {
                     Some(ref expr) => format!(
                         "func {}({}) string {{\n{}\nreturn `{}`\n}}\n",
