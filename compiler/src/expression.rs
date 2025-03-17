@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::statement::Statement;
-use crate::token::{Literal, Token};
+use crate::token::{Literal, Token, TokenType};
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -39,6 +39,7 @@ pub enum ExpressionWithoutBlock {
     Assignment {
         name: Token,
         value: Box<ExpressionWithoutBlock>,
+        operator: Token,
     },
     Html {
         name: Token,
@@ -67,9 +68,15 @@ impl ExpressionWithoutBlock {
             Self::Literal(Literal::False) => "false".to_string(),
             Self::Unary { operator, right } => todo!(),
             Self::Variable(identifier) => format!("{}", identifier.value.clone().unwrap()),
-            Self::Assignment { name, value } => {
-                format!("{} = {}", name.lexeme, value.clone().compile())
-            }
+            Self::Assignment {
+                name,
+                value,
+                operator,
+            } => match operator.token_type {
+                TokenType::Equal => format!("{} = {}", name.lexeme, value.compile()),
+                TokenType::PlusEqual => format!("{} += {}", name.lexeme, value.compile()),
+                _ => panic!("Unexpected token type in assignment: {}", operator.lexeme),
+            },
             Self::Html { name, inner } => {
                 format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme)
             }

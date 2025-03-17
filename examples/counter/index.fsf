@@ -3,6 +3,6 @@ cmpnt index() {
 
     <html>
         <span>f"Count: {count}"</span>
-        <button onclick=() => count+=1>"increment"</button>
+        <button onclick=|| count += 1 >"increment"</button>
     </html>
 }

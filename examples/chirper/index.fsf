@@ -38,7 +38,7 @@ struct ChirpsListProps = {
 }
 
 cmpnt ChirpsList(props: ChirpsListProps) {
-    props.chirps.map((chirp) =>
+    props.chirps.map(|chirp|
         <div>
             <span>chirp.message</span>
             <span>chirp.author</span>

@@ -71,7 +71,18 @@ impl Scanner {
                     tokens.push(Token::new(TokenType::Minus, c.to_string(), None, self.line))
                 }
             }
-            '+' => tokens.push(Token::new(TokenType::Plus, c.to_string(), None, self.line)),
+            '+' => {
+                if self.match_char('=') {
+                    tokens.push(Token::new(
+                        TokenType::PlusEqual,
+                        "+=".to_string(),
+                        None,
+                        self.line,
+                    ));
+                } else {
+                    tokens.push(Token::new(TokenType::Plus, c.to_string(), None, self.line))
+                }
+            }
             ':' => tokens.push(Token::new(TokenType::Colon, c.to_string(), None, self.line)),
             ';' => tokens.push(Token::new(
                 TokenType::Semicolon,

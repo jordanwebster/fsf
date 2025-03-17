@@ -13,7 +13,11 @@ pub enum MaybeStatement {
 pub enum Statement {
     Print(Expression),
     Expression(Expression),
-    Let(Token, Expression),
+    Let {
+        token: Token,
+        expression: Expression,
+        mutable: bool,
+    },
 }
 
 impl Statement {
@@ -21,7 +25,11 @@ impl Statement {
         match self {
             Self::Print(expr) => format!("fmt.Println({})\n", expr.compile()),
             Self::Expression(expr) => format!("{}\n", expr.compile()),
-            Self::Let(token, expr) => match expr {
+            Self::Let {
+                token,
+                expression,
+                mutable,
+            } => match expression {
                 Expression::WithoutBlock(expr) => {
                     format!("{} := {}\n", token.value.clone().unwrap(), expr.compile())
                 }

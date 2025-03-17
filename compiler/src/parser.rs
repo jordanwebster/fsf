@@ -31,10 +31,7 @@ impl Parser {
 
     fn item(&mut self) -> Option<Item> {
         match self.function() {
-            Ok(item) => {
-                println!("Got item: {:?}", item);
-                Some(item)
-            }
+            Ok(item) => Some(item),
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
                 panic!("Got error: {:?}", error);
@@ -145,22 +142,12 @@ impl Parser {
     fn maybe_statement(&mut self) -> Result<MaybeStatement, ParseError> {
         if self.match_token(&[TokenType::Let, TokenType::Print]) {
             match self.previous().token_type {
-                TokenType::Let => {
-                    let x = Ok(MaybeStatement::Statement(self.let_declaration()?));
-                    println!("Parsed let statement: {:?}", x);
-                    x
-                }
-                TokenType::Print => {
-                    let x = Ok(MaybeStatement::Statement(self.print_statement()?));
-                    println!("Parsed print statement: {:?}", x);
-                    x
-                }
+                TokenType::Let => Ok(MaybeStatement::Statement(self.let_declaration()?)),
+                TokenType::Print => Ok(MaybeStatement::Statement(self.print_statement()?)),
                 ref t => panic!("Unexpected statement type {:?}", t),
             }
         } else {
-            let x = Ok(MaybeStatement::Expression(self.expression()?));
-            println!("Parsed expression statement: {:?}", x);
-            x
+            Ok(MaybeStatement::Expression(self.expression()?))
         }
     }
 
@@ -169,6 +156,12 @@ impl Parser {
     }
 
     fn let_declaration(&mut self) -> Result<Statement, ParseError> {
+        let mutable = if self.match_token(&[TokenType::Mut]) {
+            true
+        } else {
+            false
+        };
+
         let name = self
             .consume(TokenType::Identifier, "Expect variable name")?
             .clone();
@@ -177,7 +170,11 @@ impl Parser {
         let initializer = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ; after variable declaration")?;
 
-        Ok(Statement::Let(name, initializer))
+        Ok(Statement::Let {
+            token: name,
+            expression: initializer,
+            mutable,
+        })
     }
 
     fn print_statement(&mut self) -> Result<Statement, ParseError> {
@@ -271,14 +268,15 @@ impl Parser {
     fn assignment(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
         let expr = self.equality()?;
 
-        if self.match_token(&[TokenType::Equal]) {
-            let equals = self.previous().clone();
+        if self.match_token(&[TokenType::Equal, TokenType::PlusEqual]) {
+            let operator = self.previous().clone();
             let value = self.assignment()?;
 
             if let ExpressionWithoutBlock::Variable(name) = expr {
                 return Ok(ExpressionWithoutBlock::Assignment {
                     name,
                     value: value.into(),
+                    operator,
                 });
             }
 
