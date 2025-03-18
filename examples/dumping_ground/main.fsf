@@ -38,9 +38,7 @@ fn main() -> void {
 
     let mut mutvar = 1;
     mutvar += 1;
-    if mutvar == 2 {
-        print("mutvar is 2");
-    }
+    print(`mutvar is {mutvar}`);
 }
 
 fn add_10(num: int) -> int {

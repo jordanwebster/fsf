@@ -2,7 +2,7 @@ cmpnt index() {
     let mut count = 0;
 
     <html>
-        <span>f"Count: {count}"</span>
-        <button onclick=|| count += 1 >"increment"</button>
+        <span>`Count: {count}`</span>
+        <button onclick=|| count += 1>"increment"</button>
     </html>
 }

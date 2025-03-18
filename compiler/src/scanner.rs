@@ -189,7 +189,8 @@ impl Scanner {
             }
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
-            '"' => self.string(tokens),
+            '"' => self.string(tokens, false),
+            '`' => self.string(tokens, true),
             '0'..='9' => self.number(tokens),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(tokens),
             _ => todo!("Handle unexpected tokens"),
@@ -228,8 +229,12 @@ impl Scanner {
         self.source.chars().nth(self.current + 1).unwrap()
     }
 
-    fn string(&mut self, tokens: &mut Vec<Token>) {
-        while self.peek() != '"' && !self.is_at_end() {
+    fn string(&mut self, tokens: &mut Vec<Token>, is_fstring: bool) {
+        let terminator = match is_fstring {
+            true => '`',
+            false => '"',
+        };
+        while self.peek() != terminator && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
             }
@@ -246,7 +251,10 @@ impl Scanner {
 
         let value = self.source[self.start + 1..self.current - 1].to_string();
         tokens.push(Token::new(
-            TokenType::String,
+            match is_fstring {
+                true => TokenType::FString,
+                false => TokenType::String,
+            },
             self.source[self.start..self.current].to_string(),
             Some(Literal::String(value)),
             self.line,

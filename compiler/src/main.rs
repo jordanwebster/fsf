@@ -46,11 +46,6 @@ fn main() -> Result<()> {
         Commands::Serve { path } => serve(path),
         Commands::Run { path } => run(path),
     }
-    // // compile_example()?;
-    // compile_index()?;
-    // setup_runtime()?;
-    // serve()?;
-    // Ok(())
 }
 
 fn serve(path: &Path) -> Result<()> {
@@ -72,7 +67,7 @@ fn serve(path: &Path) -> Result<()> {
     let mut output_file = File::create(&output_path)?;
     output_file.write_all("package main\n".as_bytes())?;
     // TODO: Propagate this information up via the parser
-    if output.contains("fmt.Println") {
+    if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
         output_file.write_all("import \"fmt\"\n".as_bytes())?;
     }
     output_file.write_all(output.as_bytes())?;
@@ -118,7 +113,7 @@ fn run(path: &Path) -> Result<()> {
             let mut output_file = File::create(&output_path)?;
             output_file.write_all("package main\n".as_bytes())?;
             // TODO: Propagate this information up via the parser
-            if output.contains("fmt.Println") {
+            if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
                 output_file.write_all("import \"fmt\"\n".as_bytes())?;
             }
             output_file.write_all(output.as_bytes())?;

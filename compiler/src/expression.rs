@@ -4,6 +4,12 @@ use crate::statement::Statement;
 use crate::token::{Literal, Token, TokenType};
 
 #[derive(Debug, Clone)]
+pub enum FStringChunk {
+    Literal(String),
+    Identifier(String),
+}
+
+#[derive(Debug, Clone)]
 pub enum Expression {
     WithBlock(ExpressionWithBlock),
     WithoutBlock(ExpressionWithoutBlock),
@@ -45,6 +51,9 @@ pub enum ExpressionWithoutBlock {
         name: Token,
         inner: Box<Expression>,
     },
+    FString {
+        chunks: Vec<FStringChunk>,
+    },
 }
 
 impl ExpressionWithoutBlock {
@@ -77,6 +86,23 @@ impl ExpressionWithoutBlock {
                 TokenType::PlusEqual => format!("{} += {}", name.lexeme, value.compile()),
                 _ => panic!("Unexpected token type in assignment: {}", operator.lexeme),
             },
+            Self::FString { chunks } => {
+                let format_string = chunks
+                    .iter()
+                    .map(|chunk| match chunk {
+                        FStringChunk::Literal(string) => string,
+                        FStringChunk::Identifier(string) => "%v", // TODO: Use correct specifier based on type
+                    })
+                    .join("");
+                let arguments = chunks
+                    .iter()
+                    .filter_map(|chunk| match chunk {
+                        FStringChunk::Literal(_) => None,
+                        FStringChunk::Identifier(string) => Some(string),
+                    })
+                    .join(", ");
+                format!("fmt.Sprintf(\"{}\", {})", format_string, arguments)
+            }
             Self::Html { name, inner } => {
                 format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme)
             }

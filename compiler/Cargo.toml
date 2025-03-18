@@ -10,3 +10,4 @@ itertools = "0.13.0"
 thiserror = "1.0.63"
 clap = { version = "4.5.27", features = ["derive"] }
 anyhow = "1.0.95"
+regex = "1.11.1"

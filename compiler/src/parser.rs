@@ -1,9 +1,10 @@
-use thiserror::Error;
-
-use crate::expression::{BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock};
+use crate::expression::{
+    BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk,
+};
 use crate::item::{Item, Parameter};
 use crate::statement::{MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -412,6 +413,9 @@ impl Parser {
                 self.previous().value.clone().unwrap(),
             ));
         }
+        if self.match_token(&[TokenType::FString]) {
+            return self.fstring();
+        }
         if self.match_token(&[TokenType::Identifier]) {
             return Ok(ExpressionWithoutBlock::Variable(self.previous().clone()));
         }
@@ -428,6 +432,59 @@ impl Parser {
             self.peek().clone(),
             "Expect expression.".to_string(),
         ))
+    }
+
+    fn fstring(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let string = match &self.previous().value {
+            Some(Literal::String(s)) => s,
+            _ => panic!("fstring needs a literal string value"),
+        };
+
+        let mut result = Vec::new();
+        let mut current_position = 0;
+        let mut current_literal = String::new();
+
+        let chars: Vec<char> = string.chars().collect();
+
+        while current_position < chars.len() {
+            if chars[current_position] == '{' {
+                // Save any accumulated literal before the opening brace
+                if !current_literal.is_empty() {
+                    result.push(FStringChunk::Literal(current_literal.clone()));
+                    current_literal.clear();
+                }
+
+                current_position += 1; // Move past the '{'
+                let start_position = current_position;
+
+                // Find the closing brace
+                while current_position < chars.len() && chars[current_position] != '}' {
+                    current_position += 1;
+                }
+
+                if current_position < chars.len() {
+                    let identifier: String =
+                        chars[start_position..current_position].iter().collect();
+                    if !identifier.is_empty() {
+                        result.push(FStringChunk::Identifier(identifier));
+                    }
+                    current_position += 1; // Move past the '}'
+                } else {
+                    // Unclosed brace, treat the '{' as a literal
+                    current_literal.push('{');
+                }
+            } else {
+                current_literal.push(chars[current_position]);
+                current_position += 1;
+            }
+        }
+
+        // Add any remaining literal
+        if !current_literal.is_empty() {
+            result.push(FStringChunk::Literal(current_literal));
+        }
+
+        Ok(ExpressionWithoutBlock::FString { chunks: result })
     }
 
     fn html(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
