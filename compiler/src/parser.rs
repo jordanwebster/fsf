@@ -440,7 +440,7 @@ impl Parser {
             _ => panic!("fstring needs a literal string value"),
         };
 
-        let mut result = Vec::new();
+        let mut chunks = Vec::new();
         let mut current_position = 0;
         let mut current_literal = String::new();
 
@@ -450,7 +450,7 @@ impl Parser {
             if chars[current_position] == '{' {
                 // Save any accumulated literal before the opening brace
                 if !current_literal.is_empty() {
-                    result.push(FStringChunk::Literal(current_literal.clone()));
+                    chunks.push(FStringChunk::Literal(current_literal.clone()));
                     current_literal.clear();
                 }
 
@@ -466,7 +466,7 @@ impl Parser {
                     let identifier: String =
                         chars[start_position..current_position].iter().collect();
                     if !identifier.is_empty() {
-                        result.push(FStringChunk::Identifier(identifier));
+                        chunks.push(FStringChunk::Identifier(identifier));
                     }
                     current_position += 1; // Move past the '}'
                 } else {
@@ -481,10 +481,10 @@ impl Parser {
 
         // Add any remaining literal
         if !current_literal.is_empty() {
-            result.push(FStringChunk::Literal(current_literal));
+            chunks.push(FStringChunk::Literal(current_literal));
         }
 
-        Ok(ExpressionWithoutBlock::FString { chunks: result })
+        Ok(ExpressionWithoutBlock::FString { chunks })
     }
 
     fn html(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
