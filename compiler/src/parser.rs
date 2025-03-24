@@ -1,5 +1,6 @@
 use crate::expression::{
     BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk,
+    LambdaParameter,
 };
 use crate::item::{Item, Parameter};
 use crate::statement::{MaybeStatement, Statement};
@@ -113,6 +114,39 @@ impl Parser {
             }),
             _ => panic!("Expected function or component"),
         }
+    }
+
+    fn lambda(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut parameters = Vec::new();
+        if !self.check(&TokenType::Pipe) {
+            loop {
+                let name = self
+                    .consume(TokenType::Identifier, "Expect parameter name")?
+                    .lexeme
+                    .clone();
+                let type_annotation = match self.match_token(&[TokenType::Colon]) {
+                    false => None,
+                    true => Some(
+                        self.consume(TokenType::Identifier, "Expect type annotation")?
+                            .lexeme
+                            .clone(),
+                    ),
+                };
+                parameters.push(LambdaParameter {
+                    name,
+                    type_annotation,
+                });
+
+                if !self.match_token(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(TokenType::Pipe, "Expected '|'")?;
+
+        let body: Box<Expression> = self.expression()?.into();
+
+        Ok(ExpressionWithoutBlock::Lambda { parameters, body })
     }
 
     // fn statement(&mut self) -> Option<Statement> {
@@ -413,9 +447,6 @@ impl Parser {
                 self.previous().value.clone().unwrap(),
             ));
         }
-        if self.match_token(&[TokenType::FString]) {
-            return self.fstring();
-        }
         if self.match_token(&[TokenType::Identifier]) {
             return Ok(ExpressionWithoutBlock::Variable(self.previous().clone()));
         }
@@ -424,8 +455,16 @@ impl Parser {
             self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
             return Ok(ExpressionWithoutBlock::Grouping(expr.into()));
         }
+
+        // TODO: Make these expression part of the precedence tree proper
+        if self.match_token(&[TokenType::FString]) {
+            return self.fstring();
+        }
         if self.match_token(&[TokenType::Less]) && self.peek().token_type == TokenType::Identifier {
             return self.html();
+        }
+        if self.match_token(&[TokenType::Pipe]) {
+            return self.lambda();
         }
 
         Err(ParseError::SyntaxError(

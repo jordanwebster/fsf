@@ -1,7 +1,6 @@
-use itertools::Itertools;
-
 use crate::statement::Statement;
 use crate::token::{Literal, Token, TokenType};
+use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub enum FStringChunk {
@@ -25,6 +24,12 @@ impl Expression {
 }
 
 #[derive(Debug, Clone)]
+pub struct LambdaParameter {
+    pub name: String,
+    pub type_annotation: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub enum ExpressionWithoutBlock {
     Binary {
         left: Box<ExpressionWithoutBlock>,
@@ -34,6 +39,10 @@ pub enum ExpressionWithoutBlock {
     Call {
         callee: Box<ExpressionWithoutBlock>,
         arguments: Vec<Expression>,
+    },
+    Lambda {
+        parameters: Vec<LambdaParameter>,
+        body: Box<Expression>,
     },
     Grouping(Box<ExpressionWithoutBlock>),
     Literal(Literal),
@@ -105,6 +114,35 @@ impl ExpressionWithoutBlock {
             }
             Self::Html { name, inner } => {
                 format!("<{}>\n{}\n</{}>", name.lexeme, inner.compile(), name.lexeme)
+            }
+            Self::Lambda { parameters, body } => {
+                let params = parameters
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "{} {}",
+                            p.name,
+                            match p.type_annotation.as_deref() {
+                                Some("int") => "int",
+                                Some("str") => "string",
+                                Some(other) => other,
+                                // TODO: Add proper type inference
+                                None => "int",
+                            }
+                        )
+                    })
+                    .join(", ");
+                match &**body {
+                    Expression::WithoutBlock(expression) => {
+                        // TODO: Add proper type inference
+                        format!(
+                            "func({}) int {{\nreturn {};\n}}\n",
+                            params,
+                            expression.compile()
+                        )
+                    }
+                    Expression::WithBlock(expression) => todo!(),
+                }
             }
         }
     }

@@ -57,6 +57,7 @@ impl Scanner {
                 None,
                 self.line,
             )),
+            '|' => tokens.push(Token::new(TokenType::Pipe, c.to_string(), None, self.line)),
             ',' => tokens.push(Token::new(TokenType::Comma, c.to_string(), None, self.line)),
             '.' => tokens.push(Token::new(TokenType::Dot, c.to_string(), None, self.line)),
             '-' => {

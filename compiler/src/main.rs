@@ -40,7 +40,7 @@ enum Commands {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    std::fs::remove_dir_all(".dist")?;
+    let _ = std::fs::remove_dir_all(".dist");
     std::fs::create_dir_all(".dist/runtime")?;
     match &cli.command {
         Commands::Serve { path } => serve(path),

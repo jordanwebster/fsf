@@ -39,6 +39,10 @@ fn main() -> void {
     let mut mutvar = 1;
     mutvar += 1;
     print(`mutvar is {mutvar}`);
+
+    let f = |x| 2*x;
+    let result = f(22);
+    print(`f(22) is {result}`);
 }
 
 fn add_10(num: int) -> int {
