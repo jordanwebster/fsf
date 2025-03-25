@@ -1,5 +1,6 @@
 use crate::parser::Parser;
 use crate::scanner::Scanner;
+use crate::test_collector::TestCollector;
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::Parser as _;
@@ -14,6 +15,7 @@ mod item;
 mod parser;
 mod scanner;
 mod statement;
+mod test_collector;
 mod token;
 
 #[derive(clap::Parser)]
@@ -35,6 +37,8 @@ enum Commands {
         /// The path to run from
         path: PathBuf,
     },
+    /// Run all the tests in the specified path
+    Test { path: PathBuf },
 }
 
 fn main() -> Result<()> {
@@ -45,6 +49,7 @@ fn main() -> Result<()> {
     match &cli.command {
         Commands::Serve { path } => serve(path),
         Commands::Run { path } => run(path),
+        Commands::Test { path } => test(path),
     }
 }
 
@@ -142,6 +147,56 @@ fn run(path: &Path) -> Result<()> {
         }
     }
 }
+
+fn test(path: &Path) -> Result<()> {
+    let mut tests = Vec::new();
+
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            let mut file = File::open(&path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+
+            let mut scanner = Scanner::new(contents);
+            let tokens = scanner.scan_tokens();
+            let mut parser = Parser::new(tokens);
+            let tree = parser.parse();
+            tests.extend(TestCollector::all_tests(&tree));
+            let output = tree
+                .into_iter()
+                .filter_map(|stmt| stmt.map(|s| s.compile()))
+                .join("");
+
+            let mut output_path = Path::new(".dist/runtime").join(path.file_stem().unwrap());
+            output_path.set_extension("go");
+            let mut output_file = File::create(&output_path)?;
+            output_file.write_all("package main\n".as_bytes())?;
+            // TODO: Propagate this information up via the parser
+            if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
+                output_file.write_all("import \"fmt\"\n".as_bytes())?;
+            }
+            output_file.write_all(output.as_bytes())?;
+        }
+    }
+
+    setup_test_runner(tests)?;
+
+    std::env::set_current_dir(".dist/runtime")?;
+    let _ = Command::new("go")
+        .arg("mod")
+        .arg("init")
+        .arg("fsf")
+        .output()?;
+
+    match Command::new("go").arg("run").arg(".").status()?.success() {
+        true => Ok(()),
+        false => Err(anyhow!("Tests failed")),
+    }
+}
+
 fn setup_runtime() -> Result<(), std::io::Error> {
     let output = Command::new("cp")
         .arg("-R")
@@ -159,4 +214,25 @@ fn setup_runtime() -> Result<(), std::io::Error> {
             "Command execution failed",
         ));
     })
+}
+
+fn setup_test_runner(tests: Vec<String>) -> Result<()> {
+    let input_file_path = Path::new("../test_runner/test_runner.go");
+    let output_file_path = Path::new(".dist/runtime/main.go");
+
+    let mut content = String::new();
+    let mut file = File::open(input_file_path)?;
+    file.read_to_string(&mut content)?;
+
+    let replacement = tests
+        .iter()
+        .map(|t| format!("runner.runTest({t}, \"{t}\")"))
+        .join("\n");
+
+    let new_content = content.replace("/* replace: tests */", &replacement);
+
+    let mut output_file = File::create(output_file_path)?;
+    output_file.write_all(new_content.as_bytes())?;
+
+    Ok(())
 }

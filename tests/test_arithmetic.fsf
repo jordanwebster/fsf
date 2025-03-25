@@ -1,0 +1,7 @@
+fn test_simple_arithmetic() -> void {
+    assert_eq(2 + 2, 4);
+    assert_eq(2 * 2, 4);
+    assert_eq(2 * 2 + 2, 6);
+    assert_eq(2 + 2 * 2, 6);
+    assert_eq((2 + 2) * 2, 8);
+}

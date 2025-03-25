@@ -66,6 +66,7 @@ pub enum TokenType {
     Cmpnt,
     If,
     Else,
+    AssertEq,
 
     EOF,
 }

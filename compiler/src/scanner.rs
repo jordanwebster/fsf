@@ -304,6 +304,7 @@ impl Scanner {
             "cmpnt" => TokenType::Cmpnt,
             "if" => TokenType::If,
             "else" => TokenType::Else,
+            "assert_eq" => TokenType::AssertEq,
             _ => TokenType::Identifier,
         };
 

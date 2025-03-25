@@ -175,10 +175,13 @@ impl Parser {
     // }
 
     fn maybe_statement(&mut self) -> Result<MaybeStatement, ParseError> {
-        if self.match_token(&[TokenType::Let, TokenType::Print]) {
+        if self.match_token(&[TokenType::Let, TokenType::Print, TokenType::AssertEq]) {
             match self.previous().token_type {
                 TokenType::Let => Ok(MaybeStatement::Statement(self.let_declaration()?)),
+
+                // TODO: Remove these as builtins
                 TokenType::Print => Ok(MaybeStatement::Statement(self.print_statement()?)),
+                TokenType::AssertEq => Ok(MaybeStatement::Statement(self.assert_eq_statement()?)),
                 ref t => panic!("Unexpected statement type {:?}", t),
             }
         } else {
@@ -218,6 +221,16 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')'")?;
         self.consume(TokenType::Semicolon, "Expect ;")?;
         Ok(Statement::Print(value))
+    }
+
+    fn assert_eq_statement(&mut self) -> Result<Statement, ParseError> {
+        self.consume(TokenType::LeftParen, "Expect '('")?;
+        let left = self.expression()?;
+        self.consume(TokenType::Comma, "Expect ','")?;
+        let right = self.expression()?;
+        self.consume(TokenType::RightParen, "Expect ')'")?;
+        self.consume(TokenType::Semicolon, "Expect ';'")?;
+        Ok(Statement::AssertEq(left, right))
     }
 
     fn expression(&mut self) -> Result<Expression, ParseError> {

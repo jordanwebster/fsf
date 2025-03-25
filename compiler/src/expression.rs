@@ -78,7 +78,7 @@ impl ExpressionWithoutBlock {
                 callee.compile(),
                 arguments.iter().map(|e| e.compile()).join(", ")
             ),
-            Self::Grouping(expression) => todo!(),
+            Self::Grouping(expression) => format!("({})", expression.compile()),
             Self::Literal(Literal::Number(number)) => format!("{}", number),
             Self::Literal(Literal::String(string)) => format!("\"{}\"", string),
             Self::Literal(Literal::Identifier(identifier)) => identifier.to_string(),

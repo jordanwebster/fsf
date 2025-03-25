@@ -18,6 +18,7 @@ pub enum Statement {
         expression: Expression,
         mutable: bool,
     },
+    AssertEq(Expression, Expression),
 }
 
 impl Statement {
@@ -51,6 +52,17 @@ impl Statement {
                     ExpressionWithBlock::If { expr, then, r#else } => todo!(),
                 },
             },
+            Self::AssertEq(left, right) => {
+                // TODO: Add assert_eq function as part of Go runtime
+                format!(
+                    "if ({} != {}) {{\npanic(\"{} != {}\")}}\n",
+                    left.compile(),
+                    right.compile(),
+                    // TODO: Replace with source not compiled form
+                    left.compile(),
+                    right.compile()
+                )
+            }
         }
     }
 }
