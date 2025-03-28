@@ -1,3 +1,4 @@
+use crate::compilers::Program;
 use crate::item::Item;
 
 pub struct TestCollector {}
@@ -7,12 +8,14 @@ impl TestCollector {
         Self {}
     }
 
-    pub fn all_tests(items: &Vec<Option<Item>>) -> Vec<String> {
-        items
+    pub fn all_tests(program: &Program) -> Vec<String> {
+        program
             .iter()
-            .filter_map(|item| match item {
-                Some(Item::Function { name, .. }) => Some(name),
-                _ => None,
+            .flat_map(|module| {
+                module.items.iter().filter_map(|item| match item {
+                    Some(Item::Function { name, .. }) if name.starts_with("test") => Some(name),
+                    _ => None,
+                })
             })
             .cloned()
             .collect()

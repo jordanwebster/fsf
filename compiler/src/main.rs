@@ -1,3 +1,5 @@
+use crate::compilers::go_compiler::GoCompiler;
+use crate::compilers::{Module, Program};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::test_collector::TestCollector;
@@ -10,6 +12,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+mod compilers;
 mod expression;
 mod item;
 mod parser;
@@ -17,6 +20,12 @@ mod scanner;
 mod statement;
 mod test_collector;
 mod token;
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum Target {
+    Go,
+    Js,
+}
 
 #[derive(clap::Parser)]
 #[command(name = "fsf")]
@@ -36,9 +45,17 @@ enum Commands {
     Run {
         /// The path to run from
         path: PathBuf,
+
+        #[arg(long, value_enum, default_value_t = Target::Go)]
+        target: Target,
     },
     /// Run all the tests in the specified path
-    Test { path: PathBuf },
+    Test {
+        path: PathBuf,
+
+        #[arg(long, value_enum, default_value_t = Target::Go)]
+        target: Target,
+    },
 }
 
 fn main() -> Result<()> {
@@ -48,8 +65,8 @@ fn main() -> Result<()> {
     std::fs::create_dir_all(".dist/runtime")?;
     match &cli.command {
         Commands::Serve { path } => serve(path),
-        Commands::Run { path } => run(path),
-        Commands::Test { path } => test(path),
+        Commands::Run { path, target } => run(path, target),
+        Commands::Test { path, target } => test(path, target),
     }
 }
 
@@ -94,106 +111,98 @@ fn serve(path: &Path) -> Result<()> {
     }
 }
 
-fn run(path: &Path) -> Result<()> {
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
-        let path = entry.path();
+fn parse_module(path: PathBuf) -> Result<Module> {
+    let mut file = File::open(&path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
 
-        if path.is_file() {
-            let mut file = File::open(&path)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
+    let mut scanner = Scanner::new(contents);
+    let tokens = scanner.scan_tokens();
+    let mut parser = Parser::new(tokens);
+    Ok(Module {
+        path,
+        items: parser.parse(),
+    })
+}
 
-            let mut scanner = Scanner::new(contents);
-            let tokens = scanner.scan_tokens();
-            let mut parser = Parser::new(tokens);
-            let output = parser
-                .parse()
-                .into_iter()
-                .filter_map(|stmt| stmt.map(|s| s.compile()))
-                .join("");
+fn run(path: &Path, target: &Target) -> Result<()> {
+    let program = std::fs::read_dir(path)?
+        .filter_map(|entry| match entry {
+            Ok(entry) if entry.path().is_file() => Some(entry.path()),
+            _ => None,
+        })
+        .map(parse_module)
+        .collect::<Result<Program>>()?;
 
-            let mut output_path = Path::new(".dist/runtime").join(path.file_stem().unwrap());
-            output_path.set_extension("go");
-            let mut output_file = File::create(&output_path)?;
-            output_file.write_all("package main\n".as_bytes())?;
-            // TODO: Propagate this information up via the parser
-            if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
-                output_file.write_all("import \"fmt\"\n".as_bytes())?;
+    match target {
+        Target::Go => {
+            let mut compiler = GoCompiler::new();
+            let compile_dir = PathBuf::from(".dist/runtime");
+            compiler.compile(program, &compile_dir)?;
+
+            // TODO: Make this part of the compiler
+            std::env::set_current_dir(compile_dir)?;
+            let _ = Command::new("go")
+                .arg("mod")
+                .arg("init")
+                .arg("fsf")
+                .output()?;
+            let output = Command::new("go").arg("run").arg(".").output()?;
+
+            match output.status.success() {
+                true => {
+                    print!("{}", String::from_utf8_lossy(&output.stdout));
+                    Ok(())
+                }
+                false => {
+                    eprintln!(
+                        "Failed to run Go command: {}",
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+                    Err(anyhow!("Failed to run Go command"))
+                }
             }
-            output_file.write_all(output.as_bytes())?;
         }
-    }
-
-    std::env::set_current_dir(".dist/runtime")?;
-    let _ = Command::new("go")
-        .arg("mod")
-        .arg("init")
-        .arg("fsf")
-        .output()?;
-    let output = Command::new("go").arg("run").arg(".").output()?;
-
-    match output.status.success() {
-        true => {
-            print!("{}", String::from_utf8_lossy(&output.stdout));
-            Ok(())
-        }
-        false => {
-            eprintln!(
-                "Failed to run Go command: {}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-            Err(anyhow!("Failed to run Go command"))
+        Target::Js => {
+            todo!();
+            // let mut compiler = JsCompiler::new();
+            // compiler.compile(program)?;
+            // Ok(())
         }
     }
 }
 
-fn test(path: &Path) -> Result<()> {
-    let mut tests = Vec::new();
+fn test(path: &Path, target: &Target) -> Result<()> {
+    let program = std::fs::read_dir(path)?
+        .filter_map(|entry| match entry {
+            Ok(entry) if entry.path().is_file() => Some(entry.path()),
+            _ => None,
+        })
+        .map(parse_module)
+        .collect::<Result<Program>>()?;
+    let tests = TestCollector::all_tests(&program);
 
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
-        let path = entry.path();
+    match target {
+        Target::Go => {
+            let mut compiler = GoCompiler::new();
+            let compile_dir = PathBuf::from(".dist/runtime");
+            compiler.compile(program, &compile_dir)?;
 
-        if path.is_file() {
-            let mut file = File::open(&path)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
+            // TODO: Make part of compiler
+            setup_test_runner(tests)?;
+            std::env::set_current_dir(".dist/runtime")?;
+            let _ = Command::new("go")
+                .arg("mod")
+                .arg("init")
+                .arg("fsf")
+                .output()?;
 
-            let mut scanner = Scanner::new(contents);
-            let tokens = scanner.scan_tokens();
-            let mut parser = Parser::new(tokens);
-            let tree = parser.parse();
-            tests.extend(TestCollector::all_tests(&tree));
-            let output = tree
-                .into_iter()
-                .filter_map(|stmt| stmt.map(|s| s.compile()))
-                .join("");
-
-            let mut output_path = Path::new(".dist/runtime").join(path.file_stem().unwrap());
-            output_path.set_extension("go");
-            let mut output_file = File::create(&output_path)?;
-            output_file.write_all("package main\n".as_bytes())?;
-            // TODO: Propagate this information up via the parser
-            if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
-                output_file.write_all("import \"fmt\"\n".as_bytes())?;
+            match Command::new("go").arg("run").arg(".").status()?.success() {
+                true => Ok(()),
+                false => Err(anyhow!("Tests failed")),
             }
-            output_file.write_all(output.as_bytes())?;
         }
-    }
-
-    setup_test_runner(tests)?;
-
-    std::env::set_current_dir(".dist/runtime")?;
-    let _ = Command::new("go")
-        .arg("mod")
-        .arg("init")
-        .arg("fsf")
-        .output()?;
-
-    match Command::new("go").arg("run").arg(".").status()?.success() {
-        true => Ok(()),
-        false => Err(anyhow!("Tests failed")),
+        Target::Js => todo!(),
     }
 }
 
