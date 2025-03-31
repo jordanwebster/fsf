@@ -10,6 +10,9 @@ jobs:
   build_and_test:
     name: Build and Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ go, js ]
 
     steps:
       - uses: actions/checkout@v3
@@ -22,10 +25,18 @@ jobs:
           override: true
 
       - name: Set up Go
+        if: matrix.target == 'go' || matrix.target == 'default'
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
           check-latest: true
+
+      - name: Set up Node.js
+        if: matrix.target == 'js'
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
       - name: Cache Rust dependencies
         uses: actions/cache@v3
@@ -38,6 +49,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Run tests
+      - name: Run default tests
+        if: matrix.target == 'go'
         working-directory: ./compiler
         run: cargo run -- test ../tests
+
+      - name: Run tests with target
+        working-directory: ./compiler
+        run: cargo run -- test ../tests --target ${{ matrix.target }}

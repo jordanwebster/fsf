@@ -1,4 +1,5 @@
 use crate::compilers::go_compiler::GoCompiler;
+use crate::compilers::js_compiler::JsCompiler;
 use crate::compilers::{Module, Program};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
@@ -62,7 +63,6 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let _ = std::fs::remove_dir_all(".dist");
-    std::fs::create_dir_all(".dist/runtime")?;
     match &cli.command {
         Commands::Serve { path } => serve(path),
         Commands::Run { path, target } => run(path, target),
@@ -85,6 +85,7 @@ fn serve(path: &Path) -> Result<()> {
         .filter_map(|stmt| stmt.map(|s| s.compile()))
         .join("");
 
+    std::fs::create_dir_all(".dist/runtime")?;
     let output_path = Path::new(".dist/runtime").join("index.go");
     let mut output_file = File::create(&output_path)?;
     output_file.write_all("package main\n".as_bytes())?;
@@ -137,6 +138,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
     match target {
         Target::Go => {
             let mut compiler = GoCompiler::new();
+            std::fs::create_dir_all(".dist/runtime")?;
             let compile_dir = PathBuf::from(".dist/runtime");
             compiler.compile(program, &compile_dir)?;
 
@@ -186,11 +188,12 @@ fn test(path: &Path, target: &Target) -> Result<()> {
         Target::Go => {
             let mut compiler = GoCompiler::new();
             let compile_dir = PathBuf::from(".dist/runtime");
+            std::fs::create_dir_all(&compile_dir)?;
             compiler.compile(program, &compile_dir)?;
 
             // TODO: Make part of compiler
-            setup_test_runner(tests)?;
-            std::env::set_current_dir(".dist/runtime")?;
+            setup_go_test_runner(tests)?;
+            std::env::set_current_dir(compile_dir)?;
             let _ = Command::new("go")
                 .arg("mod")
                 .arg("init")
@@ -202,7 +205,18 @@ fn test(path: &Path, target: &Target) -> Result<()> {
                 false => Err(anyhow!("Tests failed")),
             }
         }
-        Target::Js => todo!(),
+        Target::Js => {
+            let mut compiler = JsCompiler::new();
+            let compile_dir = PathBuf::from(".dist/js");
+            std::fs::create_dir_all(&compile_dir)?;
+            compiler.compile(program, &compile_dir, Some(tests))?;
+
+            std::env::set_current_dir(compile_dir)?;
+            match Command::new("node").arg("main.js").status()?.success() {
+                true => Ok(()),
+                false => Err(anyhow!("Tests failed")),
+            }
+        }
     }
 }
 
@@ -225,7 +239,7 @@ fn setup_runtime() -> Result<(), std::io::Error> {
     })
 }
 
-fn setup_test_runner(tests: Vec<String>) -> Result<()> {
+fn setup_go_test_runner(tests: Vec<String>) -> Result<()> {
     let input_file_path = Path::new("../test_runner/test_runner.go");
     let output_file_path = Path::new(".dist/runtime/main.go");
 
