@@ -5,28 +5,39 @@ use crate::statement::Statement;
 use crate::token::Literal;
 use anyhow::Result;
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-pub struct JsCompiler {}
+pub struct JsCompiler {
+    name_map: HashMap<String, String>,
+}
 
 impl JsCompiler {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            name_map: HashMap::new(),
+        }
     }
 
     pub fn compile(
         &mut self,
+        root: &Path,
         program: Program,
         compile_dir: &Path,
         tests: Option<Vec<String>>,
     ) -> Result<()> {
         let output_path = compile_dir.join("main.js");
         let mut output_file = File::create(&output_path)?;
+
+        let name_map = Self::construct_name_map(root, &program);
         if let Some(tests) = tests {
+            let tests = tests.into_iter().map(|t| name_map[&t].clone()).collect();
             Self::setup_test_runner(tests, &mut output_file)?;
         }
+        self.name_map = name_map;
+
         for module in program {
             let output = module
                 .items
@@ -38,6 +49,32 @@ impl JsCompiler {
         }
 
         Ok(())
+    }
+
+    fn construct_name_map(root: &Path, program: &Program) -> HashMap<String, String> {
+        program
+            .iter()
+            .flat_map(|module| {
+                module.items.iter().filter_map(|item| match item {
+                    // TODO: Add resolving relative imports (not from project root)
+                    Some(Item::Import { path }) => {
+                        Some((path.last().unwrap().clone(), path.join("_")))
+                    }
+                    Some(Item::Function { name, .. }) => Some((
+                        name.clone(),
+                        format!(
+                            "{}_{}",
+                            Path::new(module.path.strip_prefix(root).unwrap().file_stem().unwrap())
+                                .iter()
+                                .map(|p| p.to_string_lossy())
+                                .join("_"),
+                            name
+                        ),
+                    )),
+                    _ => None,
+                })
+            })
+            .collect()
     }
 
     fn setup_test_runner(tests: Vec<String>, output_file: &mut File) -> Result<()> {
@@ -83,14 +120,20 @@ impl JsCompiler {
                 match body.expr {
                     Some(ref expr) => format!(
                         "function {}({}) {{\n{}\nreturn {}\n}}\n",
-                        name,
+                        self.name_map[&name].to_string(),
                         params,
                         statements,
                         self.compile_expression_without_block(expr)
                     ),
-                    None => format!("function {}({}) {{\n{}\n}}\n", name, params, statements),
+                    None => format!(
+                        "function {}({}) {{\n{}\n}}\n",
+                        self.name_map[&name].to_string(),
+                        params,
+                        statements
+                    ),
                 }
             }
+            Item::Import { path } => "".to_string(),
         }
     }
 
@@ -139,7 +182,16 @@ impl JsCompiler {
                 operator.lexeme,
                 self.compile_expression_without_block(right)
             ),
-            ExpressionWithoutBlock::Call { callee, arguments } => todo!(),
+            ExpressionWithoutBlock::Call { callee, arguments } => {
+                format!(
+                    "{}({})",
+                    self.compile_expression_without_block(callee),
+                    arguments
+                        .iter()
+                        .map(|e| self.compile_expression(e))
+                        .join(", ")
+                )
+            }
             ExpressionWithoutBlock::Lambda { parameters, body } => todo!(),
             ExpressionWithoutBlock::Grouping(expr) => {
                 format!("({})", self.compile_expression_without_block(expr))
@@ -147,7 +199,13 @@ impl JsCompiler {
             ExpressionWithoutBlock::Literal(literal) => self.compile_literal(literal),
             ExpressionWithoutBlock::Unary { operator, right } => todo!(),
             ExpressionWithoutBlock::Variable(identifier) => {
-                format!("{}", identifier.value.clone().unwrap())
+                format!(
+                    "{}",
+                    self.name_map
+                        .get(&identifier.lexeme)
+                        .unwrap_or(&identifier.lexeme)
+                        .clone()
+                )
             }
             ExpressionWithoutBlock::Assignment {
                 name,
@@ -163,7 +221,7 @@ impl JsCompiler {
         match literal {
             Literal::Number(value) => format!("{}", value),
             Literal::String(value) => format!("\"{}\"", value),
-            Literal::Identifier(identifier) => identifier.to_string(),
+            Literal::Identifier(identifier) => self.name_map[identifier].to_string(),
             Literal::True => "true".to_string(),
             Literal::False => "false".to_string(),
         }

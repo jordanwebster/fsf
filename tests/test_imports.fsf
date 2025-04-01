@@ -1,0 +1,5 @@
+import example_file_module::double;
+
+fn test_file_module() -> void {
+    assert_eq(double(1), 2);
+}

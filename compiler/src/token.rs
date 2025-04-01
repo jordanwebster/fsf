@@ -49,6 +49,7 @@ pub enum TokenType {
     PlusEqual,
     SlashGreater,
     MinusGreater,
+    ColonColon,
 
     // Literals.
     Identifier,
@@ -67,6 +68,7 @@ pub enum TokenType {
     If,
     Else,
     AssertEq,
+    Import,
 
     EOF,
 }

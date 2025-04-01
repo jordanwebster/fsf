@@ -32,7 +32,18 @@ impl Parser {
     }
 
     fn item(&mut self) -> Option<Item> {
-        match self.function() {
+        let item = if self.match_token(&[TokenType::Fn, TokenType::Cmpnt]) {
+            self.function()
+        } else if self.match_token(&[TokenType::Import]) {
+            self.import()
+        } else {
+            Err(ParseError::SyntaxError(
+                self.peek().clone(),
+                "Expected item declaration".to_string(),
+            ))
+        };
+
+        match item {
             Ok(item) => Some(item),
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
@@ -43,13 +54,6 @@ impl Parser {
     }
 
     fn function(&mut self) -> Result<Item, ParseError> {
-        if !self.match_token(&[TokenType::Fn, TokenType::Cmpnt]) {
-            return Err(ParseError::SyntaxError(
-                self.peek().clone(),
-                "Expected function declaration".to_string(),
-            ));
-        }
-
         let token = self.previous().clone();
         let name = match self.match_token(&[TokenType::Identifier]) {
             true => Ok(self.previous().clone().lexeme),
@@ -114,6 +118,25 @@ impl Parser {
             }),
             _ => panic!("Expected function or component"),
         }
+    }
+
+    fn import(&mut self) -> Result<Item, ParseError> {
+        let mut path = Vec::new();
+
+        loop {
+            let part = self
+                .consume(TokenType::Identifier, "Expect identifier")?
+                .lexeme
+                .clone();
+            path.push(part);
+
+            if !self.match_token(&[TokenType::ColonColon]) {
+                break;
+            }
+        }
+        self.consume(TokenType::Semicolon, "Expect ';'")?;
+
+        Ok(Item::Import { path })
     }
 
     fn lambda(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {

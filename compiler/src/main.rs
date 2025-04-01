@@ -209,7 +209,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             let mut compiler = JsCompiler::new();
             let compile_dir = PathBuf::from(".dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(program, &compile_dir, Some(tests))?;
+            compiler.compile(path, program, &compile_dir, Some(tests))?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {

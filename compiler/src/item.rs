@@ -22,6 +22,9 @@ pub enum Item {
         parameters: Vec<Parameter>,
         body: BlockExpression,
     },
+    Import {
+        path: Vec<String>,
+    },
 }
 
 impl Item {
@@ -91,6 +94,7 @@ impl Item {
                     None => format!("func {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
+            Self::Import { path } => todo!(),
         }
     }
 }

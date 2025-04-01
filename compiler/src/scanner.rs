@@ -84,7 +84,18 @@ impl Scanner {
                     tokens.push(Token::new(TokenType::Plus, c.to_string(), None, self.line))
                 }
             }
-            ':' => tokens.push(Token::new(TokenType::Colon, c.to_string(), None, self.line)),
+            ':' => {
+                if self.match_char(':') {
+                    tokens.push(Token::new(
+                        TokenType::ColonColon,
+                        c.to_string(),
+                        None,
+                        self.line,
+                    ));
+                } else {
+                    tokens.push(Token::new(TokenType::Colon, c.to_string(), None, self.line))
+                }
+            }
             ';' => tokens.push(Token::new(
                 TokenType::Semicolon,
                 c.to_string(),
@@ -305,6 +316,7 @@ impl Scanner {
             "if" => TokenType::If,
             "else" => TokenType::Else,
             "assert_eq" => TokenType::AssertEq,
+            "import" => TokenType::Import,
             _ => TokenType::Identifier,
         };
 
