@@ -111,19 +111,19 @@ impl JsCompiler {
             } => {
                 let statements = body
                     .statements
-                    .iter()
+                    .into_iter()
                     .map(|s| self.compile_statement(s))
                     .join("");
 
                 let params = parameters.iter().map(|p| p.name.clone()).join(", ");
 
                 match body.expr {
-                    Some(ref expr) => format!(
+                    Some(expr) => format!(
                         "function {}({}) {{\n{}\nreturn {}\n}}\n",
                         self.name_map[&name].to_string(),
                         params,
                         statements,
-                        self.compile_expression_without_block(expr)
+                        self.compile_expression(expr)
                     ),
                     None => format!(
                         "function {}({}) {{\n{}\n}}\n",
@@ -137,7 +137,7 @@ impl JsCompiler {
         }
     }
 
-    fn compile_statement(&mut self, statement: &Statement) -> String {
+    fn compile_statement(&mut self, statement: Statement) -> String {
         match statement {
             Statement::Print(expr) => todo!(),
             Statement::Expression(expr) => todo!(),
@@ -149,8 +149,8 @@ impl JsCompiler {
             Statement::AssertEq(left, right) => {
                 format!(
                     "if ({} != {}) {{\nthrow new Error(\"{} != {}\");\n}}\n",
-                    self.compile_expression(left),
-                    self.compile_expression(right),
+                    self.compile_expression(left.clone()),
+                    self.compile_expression(right.clone()),
                     // TODO: Replace with source not compiled form
                     self.compile_expression(left),
                     self.compile_expression(right),
@@ -159,18 +159,18 @@ impl JsCompiler {
         }
     }
 
-    fn compile_expression(&mut self, expr: &Expression) -> String {
-        match expr {
+    fn compile_expression<E>(&mut self, expr: E) -> String where E: Into<Expression> {
+        match expr.into() {
             Expression::WithBlock(expr) => self.compile_expression_with_block(expr),
             Expression::WithoutBlock(expr) => self.compile_expression_without_block(expr),
         }
     }
 
-    fn compile_expression_with_block(&mut self, expr: &ExpressionWithBlock) -> String {
+    fn compile_expression_with_block(&mut self, expr: ExpressionWithBlock) -> String {
         todo!()
     }
 
-    fn compile_expression_without_block(&mut self, expr: &ExpressionWithoutBlock) -> String {
+    fn compile_expression_without_block(&mut self, expr: ExpressionWithoutBlock) -> String {
         match expr {
             ExpressionWithoutBlock::Binary {
                 left,
@@ -178,25 +178,25 @@ impl JsCompiler {
                 right,
             } => format!(
                 "{} {} {}",
-                self.compile_expression_without_block(left),
+                self.compile_expression(*left),
                 operator.lexeme,
-                self.compile_expression_without_block(right)
+                self.compile_expression(*right)
             ),
             ExpressionWithoutBlock::Call { callee, arguments } => {
                 format!(
                     "{}({})",
-                    self.compile_expression_without_block(callee),
+                    self.compile_expression(*callee),
                     arguments
-                        .iter()
+                        .into_iter()
                         .map(|e| self.compile_expression(e))
                         .join(", ")
                 )
             }
             ExpressionWithoutBlock::Lambda { parameters, body } => todo!(),
             ExpressionWithoutBlock::Grouping(expr) => {
-                format!("({})", self.compile_expression_without_block(expr))
+                format!("({})", self.compile_expression(*expr))
             }
-            ExpressionWithoutBlock::Literal(literal) => self.compile_literal(literal),
+            ExpressionWithoutBlock::Literal(literal) => self.compile_literal(&literal),
             ExpressionWithoutBlock::Unary { operator, right } => todo!(),
             ExpressionWithoutBlock::Variable(identifier) => {
                 format!(

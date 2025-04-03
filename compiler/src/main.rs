@@ -72,32 +72,27 @@ fn main() -> Result<()> {
 
 fn serve(path: &Path) -> Result<()> {
     // TODO: Handle multiple routes
-    let mut file = File::open(path.join("index.fsf"))?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    let program = std::fs::read_dir(path)?
+        .filter_map(|entry| match entry {
+            Ok(entry) if entry.path().is_file() => Some(entry.path()),
+            _ => None,
+        })
+        .map(parse_module)
+        .collect::<Result<Program>>()?;
 
-    let mut scanner = Scanner::new(contents);
-    let tokens = scanner.scan_tokens();
-    let mut parser = Parser::new(tokens);
-    let output = parser
-        .parse()
-        .into_iter()
-        .filter_map(|stmt| stmt.map(|s| s.compile()))
-        .join("");
-
-    std::fs::create_dir_all(".dist/runtime")?;
-    let output_path = Path::new(".dist/runtime").join("index.go");
-    let mut output_file = File::create(&output_path)?;
-    output_file.write_all("package main\n".as_bytes())?;
-    // TODO: Propagate this information up via the parser
-    if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
-        output_file.write_all("import \"fmt\"\n".as_bytes())?;
-    }
-    output_file.write_all(output.as_bytes())?;
+    let compile_dir = PathBuf::from(".dist/runtime");
+    std::fs::create_dir_all(&compile_dir)?;
+    let mut compiler = GoCompiler::new();
+    compiler.compile(program, &compile_dir)?;
 
     setup_runtime()?;
 
-    std::env::set_current_dir(".dist/runtime")?;
+    std::env::set_current_dir(compile_dir)?;
+    let _ = Command::new("go")
+        .arg("mod")
+        .arg("init")
+        .arg("fsf")
+        .output()?;
     let output = Command::new("go").arg("run").arg(".").output()?;
 
     match output.status.success() {
