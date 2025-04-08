@@ -228,16 +228,16 @@ impl TestRunnerTransformer {
         let tests = self
             .tests
             .iter()
-            .map(|(module, test)| format!("__RUN_TEST({}::{}, {});", module, test, test))
+            .map(|(module, test)| format!("__RUN_TEST(\"{}::{}\", {});", module, test, test))
             .join("\n");
 
         let contents = TEST_RUNNER_TEMPLATE
             .replace("/* replace_imports */", &imports)
             .replace("/* replace_tests */", &tests);
 
-        let _test_runner = parse_module(contents, PathBuf::from("main.fsf")).unwrap();
+        let test_runner = parse_module(contents, PathBuf::from("main.fsf")).unwrap();
+        program.push(test_runner);
 
-        // TODO: Don't lose ownership of Program so that I can append this module
         // TODO: Set up pipelining this transformer with the name transformer before compilation
         // TODO: Implement __RUN_TEST as a special token that handles catching panics and reporting
         // test errors
