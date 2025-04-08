@@ -21,7 +21,7 @@ impl GoCompiler {
             let output = module
                 .items
                 .into_iter()
-                .filter_map(|item| item.map(|item| (self.compile_item(item))))
+                .map(|item| self.compile_item(item))
                 .join("");
             let mut output_path = compile_dir.join(module.path.file_stem().unwrap());
             output_path.set_extension("go");
@@ -165,7 +165,10 @@ impl GoCompiler {
         }
     }
 
-    fn compile_expression<E>(&mut self, expr: E) -> String  where E: Into<Expression> {
+    fn compile_expression<E>(&mut self, expr: E) -> String
+    where
+        E: Into<Expression>,
+    {
         match expr.into() {
             Expression::WithBlock(expr) => self.compile_expression_with_block(expr),
             Expression::WithoutBlock(expr) => self.compile_expression_without_block(expr),
@@ -240,16 +243,12 @@ impl GoCompiler {
                 value,
                 operator,
             } => match operator.token_type {
-                TokenType::Equal => format!(
-                    "{} = {}",
-                    name.lexeme,
-                    self.compile_expression(*value)
-                ),
-                TokenType::PlusEqual => format!(
-                    "{} += {}",
-                    name.lexeme,
-                    self.compile_expression(*value)
-                ),
+                TokenType::Equal => {
+                    format!("{} = {}", name.lexeme, self.compile_expression(*value))
+                }
+                TokenType::PlusEqual => {
+                    format!("{} += {}", name.lexeme, self.compile_expression(*value))
+                }
                 _ => panic!("Unexpected token type in assignment: {}", operator.lexeme),
             },
             ExpressionWithoutBlock::FString { chunks } => {

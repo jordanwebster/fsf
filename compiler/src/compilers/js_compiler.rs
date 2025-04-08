@@ -42,7 +42,7 @@ impl JsCompiler {
             let output = module
                 .items
                 .into_iter()
-                .filter_map(|item| item.map(|item| self.compile_item(item)))
+                .map(|item| self.compile_item(item))
                 .join("");
 
             output_file.write_all(output.as_bytes())?;
@@ -57,10 +57,8 @@ impl JsCompiler {
             .flat_map(|module| {
                 module.items.iter().filter_map(|item| match item {
                     // TODO: Add resolving relative imports (not from project root)
-                    Some(Item::Import { path }) => {
-                        Some((path.last().unwrap().clone(), path.join("_")))
-                    }
-                    Some(Item::Function { name, .. }) => Some((
+                    Item::Import { path } => Some((path.last().unwrap().clone(), path.join("_"))),
+                    Item::Function { name, .. } => Some((
                         name.clone(),
                         format!(
                             "{}_{}",
@@ -159,7 +157,10 @@ impl JsCompiler {
         }
     }
 
-    fn compile_expression<E>(&mut self, expr: E) -> String where E: Into<Expression> {
+    fn compile_expression<E>(&mut self, expr: E) -> String
+    where
+        E: Into<Expression>,
+    {
         match expr.into() {
             Expression::WithBlock(expr) => self.compile_expression_with_block(expr),
             Expression::WithoutBlock(expr) => self.compile_expression_without_block(expr),

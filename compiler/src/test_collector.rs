@@ -13,7 +13,7 @@ impl TestCollector {
             .iter()
             .flat_map(|module| {
                 module.items.iter().filter_map(|item| match item {
-                    Some(Item::Function { name, .. }) if name.starts_with("test") => Some(name),
+                    Item::Function { name, .. } if name.starts_with("test") => Some(name),
                     _ => None,
                 })
             })

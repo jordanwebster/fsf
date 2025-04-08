@@ -1,0 +1,5 @@
+/* replace_imports */
+
+func main() -> void {
+    /* replace_tests */
+}

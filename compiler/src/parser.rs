@@ -23,10 +23,13 @@ impl Parser {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Vec<Option<Item>> {
+    pub fn parse(&mut self) -> Vec<Item> {
         let mut items = Vec::new();
         while !self.is_at_end() {
-            items.push(self.item());
+            match self.item() {
+                Some(item) => items.push(item),
+                None => (),
+            }
         }
         items
     }
@@ -48,7 +51,6 @@ impl Parser {
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
                 panic!("Got error: {:?}", error);
-                None
             }
         }
     }

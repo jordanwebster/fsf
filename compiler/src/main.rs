@@ -15,6 +15,7 @@ use std::process::Command;
 
 mod compilers;
 mod expression;
+mod identifier_transformer;
 mod item;
 mod parser;
 mod scanner;
@@ -77,7 +78,7 @@ fn serve(path: &Path) -> Result<()> {
             Ok(entry) if entry.path().is_file() => Some(entry.path()),
             _ => None,
         })
-        .map(parse_module)
+        .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
 
     let compile_dir = PathBuf::from(".dist/runtime");
@@ -107,11 +108,14 @@ fn serve(path: &Path) -> Result<()> {
     }
 }
 
-fn parse_module(path: PathBuf) -> Result<Module> {
+fn parse_module_from_file(path: PathBuf) -> Result<Module> {
     let mut file = File::open(&path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
+    parse_module(contents, path)
+}
 
+fn parse_module(contents: String, path: PathBuf) -> Result<Module> {
     let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens();
     let mut parser = Parser::new(tokens);
@@ -127,7 +131,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             Ok(entry) if entry.path().is_file() => Some(entry.path()),
             _ => None,
         })
-        .map(parse_module)
+        .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
 
     match target {
@@ -175,7 +179,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             Ok(entry) if entry.path().is_file() => Some(entry.path()),
             _ => None,
         })
-        .map(parse_module)
+        .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
     let tests = TestCollector::all_tests(&program);
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 pub struct Module {
     pub path: PathBuf,
-    pub items: Vec<Option<Item>>,
+    pub items: Vec<Item>,
 }
 
 pub type Program = Vec<Module>;
