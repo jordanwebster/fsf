@@ -26,10 +26,7 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Item> {
         let mut items = Vec::new();
         while !self.is_at_end() {
-            match self.item() {
-                Some(item) => items.push(item),
-                None => (),
-            }
+            if let Some(item) = self.item() { items.push(item) }
         }
         items
     }
@@ -219,11 +216,7 @@ impl Parser {
     }
 
     fn let_declaration(&mut self) -> Result<Statement, ParseError> {
-        let mutable = if self.match_token(&[TokenType::Mut]) {
-            true
-        } else {
-            false
-        };
+        let mutable = self.match_token(&[TokenType::Mut]);
 
         let name = self
             .consume(TokenType::Identifier, "Expect variable name")?

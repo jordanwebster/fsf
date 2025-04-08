@@ -226,7 +226,7 @@ fn setup_runtime() -> Result<(), std::io::Error> {
         .arg("./.dist")
         .output()?;
 
-    Ok(if !output.status.success() {
+    if !output.status.success() {
         eprintln!(
             "Failed to copy directory: {}",
             String::from_utf8_lossy(&output.stderr)
@@ -235,7 +235,8 @@ fn setup_runtime() -> Result<(), std::io::Error> {
             std::io::ErrorKind::Other,
             "Command execution failed",
         ));
-    })
+    };
+    Ok(())
 }
 
 fn setup_go_test_runner(tests: Vec<String>) -> Result<()> {

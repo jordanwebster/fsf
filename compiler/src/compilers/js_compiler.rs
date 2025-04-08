@@ -111,20 +111,16 @@ impl JsCompiler {
 
                 let params = parameters.iter().map(|p| p.name.clone()).join(", ");
 
+                let name = self.name_map.get(&name).unwrap().to_string();
                 match body.expr {
                     Some(expr) => format!(
                         "function {}({}) {{\n{}\nreturn {}\n}}\n",
-                        self.name_map[&name].to_string(),
+                        name,
                         params,
                         statements,
                         self.compile_expression(expr)
                     ),
-                    None => format!(
-                        "function {}({}) {{\n{}\n}}\n",
-                        self.name_map[&name].to_string(),
-                        params,
-                        statements
-                    ),
+                    None => format!("function {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
             Item::Import { .. } => "".to_string(),
@@ -192,13 +188,10 @@ impl JsCompiler {
             ExpressionWithoutBlock::Literal(literal) => self.compile_literal(&literal),
             ExpressionWithoutBlock::Unary { .. } => todo!(),
             ExpressionWithoutBlock::Variable(identifier) => {
-                format!(
-                    "{}",
-                    self.name_map
+                self.name_map
                         .get(&identifier.lexeme)
                         .unwrap_or(&identifier.lexeme)
-                        .clone()
-                )
+                        .clone().to_string()
             }
             ExpressionWithoutBlock::Assignment { .. } => todo!(),
             ExpressionWithoutBlock::Html { .. } => todo!(),

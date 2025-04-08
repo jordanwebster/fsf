@@ -7,7 +7,6 @@ use crate::token::Literal;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use thiserror::Error;
 
 pub fn walk_ast(program: &mut Program, visitor: &mut impl AstVisitor) {
     visitor.visit_program(program);
@@ -111,7 +110,7 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
     }
 }
 
-trait AstVisitor {
+pub trait AstVisitor {
     fn visit_program(&mut self, _program: &mut Program) {}
 
     fn visit_module(&mut self, _module: &mut Module) {}
@@ -124,9 +123,6 @@ trait AstVisitor {
 
     fn visit_expression_without_block(&mut self, _expr: &mut ExpressionWithoutBlock) {}
 }
-
-#[derive(Error, Debug)]
-enum IdentifierTransformError {}
 
 pub struct GoIdentifierTransformer {
     current_module: Option<PathBuf>,
@@ -143,9 +139,8 @@ impl GoIdentifierTransformer {
         }
     }
 
-    pub fn transform(&mut self, program: &mut Program) -> Vec<IdentifierTransformError> {
+    pub fn transform(&mut self, program: &mut Program) {
         walk_ast(program, self);
-        vec![]
     }
 }
 
@@ -182,7 +177,7 @@ impl AstVisitor for GoIdentifierTransformer {
                     .unwrap()
                     .iter()
                     .map(|p| p.to_string_lossy());
-                let mut full_path = module_path.chain(path.iter().map(|s| std::borrow::Cow::from(s)));
+                let mut full_path = module_path.chain(path.iter().map(std::borrow::Cow::from));
                 self.name_map
                     .insert(name, full_path.join("_").to_uppercase());
             }
@@ -191,14 +186,11 @@ impl AstVisitor for GoIdentifierTransformer {
     }
 
     fn visit_expression_without_block(&mut self, expr: &mut ExpressionWithoutBlock) {
-        match expr {
-            ExpressionWithoutBlock::Literal(Literal::Identifier(name)) => {
-                if let Some(new_name) = self.name_map.get(name) {
-                    name.clear();
-                    name.push_str(new_name);
-                }
+        if let ExpressionWithoutBlock::Literal(Literal::Identifier(name)) = expr {
+            if let Some(new_name) = self.name_map.get(name) {
+                name.clear();
+                name.push_str(new_name);
             }
-            _ => (),
         }
     }
 }
