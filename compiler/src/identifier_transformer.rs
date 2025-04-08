@@ -182,7 +182,7 @@ impl AstVisitor for GoIdentifierTransformer {
                     .unwrap()
                     .iter()
                     .map(|p| p.to_string_lossy());
-                let mut full_path = module_path.chain(path.into_iter());
+                let mut full_path = module_path.chain(path.iter().map(|s| std::borrow::Cow::from(s)));
                 self.name_map
                     .insert(name, full_path.join("_").to_uppercase());
             }
@@ -243,7 +243,7 @@ impl TestRunnerTransformer {
             .replace("/* replace_imports */", &imports)
             .replace("/* replace_tests */", &tests);
 
-        let test_runner = parse_module(contents, PathBuf::from("main.fsf")).unwrap();
+        let _test_runner = parse_module(contents, PathBuf::from("main.fsf")).unwrap();
 
         // TODO: Don't lose ownership of Program so that I can append this module
         // TODO: Set up pipelining this transformer with the name transformer before compilation

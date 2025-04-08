@@ -96,16 +96,12 @@ impl JsCompiler {
 
     fn compile_item(&mut self, item: Item) -> String {
         match item {
-            Item::Component {
-                name,
-                parameters,
-                body,
-            } => todo!(),
+            Item::Component { .. } => todo!(),
             Item::Function {
                 name,
                 parameters,
                 body,
-                return_type,
+                ..
             } => {
                 let statements = body
                     .statements
@@ -131,19 +127,15 @@ impl JsCompiler {
                     ),
                 }
             }
-            Item::Import { path } => "".to_string(),
+            Item::Import { .. } => "".to_string(),
         }
     }
 
     fn compile_statement(&mut self, statement: Statement) -> String {
         match statement {
-            Statement::Print(expr) => todo!(),
-            Statement::Expression(expr) => todo!(),
-            Statement::Let {
-                token,
-                expression,
-                mutable,
-            } => todo!(),
+            Statement::Print(_) => todo!(),
+            Statement::Expression(_) => todo!(),
+            Statement::Let { .. } => todo!(),
             Statement::AssertEq(left, right) => {
                 format!(
                     "if ({} != {}) {{\nthrow new Error(\"{} != {}\");\n}}\n",
@@ -167,7 +159,7 @@ impl JsCompiler {
         }
     }
 
-    fn compile_expression_with_block(&mut self, expr: ExpressionWithBlock) -> String {
+    fn compile_expression_with_block(&mut self, _: ExpressionWithBlock) -> String {
         todo!()
     }
 
@@ -193,12 +185,12 @@ impl JsCompiler {
                         .join(", ")
                 )
             }
-            ExpressionWithoutBlock::Lambda { parameters, body } => todo!(),
+            ExpressionWithoutBlock::Lambda { .. } => todo!(),
             ExpressionWithoutBlock::Grouping(expr) => {
                 format!("({})", self.compile_expression(*expr))
             }
             ExpressionWithoutBlock::Literal(literal) => self.compile_literal(&literal),
-            ExpressionWithoutBlock::Unary { operator, right } => todo!(),
+            ExpressionWithoutBlock::Unary { .. } => todo!(),
             ExpressionWithoutBlock::Variable(identifier) => {
                 format!(
                     "{}",
@@ -208,13 +200,9 @@ impl JsCompiler {
                         .clone()
                 )
             }
-            ExpressionWithoutBlock::Assignment {
-                name,
-                value,
-                operator,
-            } => todo!(),
-            ExpressionWithoutBlock::Html { name, inner } => todo!(),
-            ExpressionWithoutBlock::FString { chunks } => todo!(),
+            ExpressionWithoutBlock::Assignment { .. } => todo!(),
+            ExpressionWithoutBlock::Html { .. } => todo!(),
+            ExpressionWithoutBlock::FString { .. } => todo!(),
         }
     }
 

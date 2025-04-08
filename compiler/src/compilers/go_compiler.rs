@@ -111,7 +111,7 @@ impl GoCompiler {
                     None => format!("func {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
-            Item::Import { path } => todo!(),
+            Item::Import { .. } => todo!(),
         }
     }
 
@@ -122,7 +122,7 @@ impl GoCompiler {
             Statement::Let {
                 token,
                 expression,
-                mutable,
+                ..
             } => match expression {
                 Expression::WithoutBlock(expr) => {
                     format!(
@@ -149,7 +149,7 @@ impl GoCompiler {
                             statements_str
                         }
                     }
-                    ExpressionWithBlock::If { expr, then, r#else } => todo!(),
+                    ExpressionWithBlock::If { .. } => todo!(),
                 },
             },
             Statement::AssertEq(left, right) => {
@@ -234,7 +234,7 @@ impl GoCompiler {
             }
             ExpressionWithoutBlock::Literal(Literal::True) => "true".to_string(),
             ExpressionWithoutBlock::Literal(Literal::False) => "false".to_string(),
-            ExpressionWithoutBlock::Unary { operator, right } => todo!(),
+            ExpressionWithoutBlock::Unary { .. } => todo!(),
             ExpressionWithoutBlock::Variable(identifier) => {
                 format!("{}", identifier.value.unwrap())
             }
@@ -256,7 +256,7 @@ impl GoCompiler {
                     .iter()
                     .map(|chunk| match chunk {
                         FStringChunk::Literal(string) => string,
-                        FStringChunk::Identifier(string) => "%v", // TODO: Use correct specifier based on type
+                        FStringChunk::Identifier(_string) => "%v", // TODO: Use correct specifier based on type
                     })
                     .join("");
                 let arguments = chunks
@@ -302,7 +302,7 @@ impl GoCompiler {
                             self.compile_expression_without_block(expression)
                         )
                     }
-                    Expression::WithBlock(expression) => todo!(),
+                    Expression::WithBlock(_expression) => todo!(),
                 }
             }
         }
