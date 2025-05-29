@@ -1,9 +1,11 @@
 use crate::compilers::go_compiler::GoCompiler;
 use crate::compilers::js_compiler::JsCompiler;
 use crate::compilers::{Module, Program};
+use crate::identifier_transformer::{
+    GoIdentifierTransformer, JsIdentifierTransformer, TestRunnerTransformer,
+};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
-use crate::test_collector::TestCollector;
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::Parser as _;
@@ -174,24 +176,27 @@ fn run(path: &Path, target: &Target) -> Result<()> {
 }
 
 fn test(path: &Path, target: &Target) -> Result<()> {
-    let program = std::fs::read_dir(path)?
+    let mut program = std::fs::read_dir(path)?
         .filter_map(|entry| match entry {
             Ok(entry) if entry.path().is_file() => Some(entry.path()),
             _ => None,
         })
         .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
-    let tests = TestCollector::all_tests(&program);
+
+    let mut test_runner_transformer = TestRunnerTransformer::new(path.into());
+    test_runner_transformer.transform(&mut program);
 
     match target {
         Target::Go => {
+            let mut identifier_transformer = GoIdentifierTransformer::new(path.into());
+            identifier_transformer.transform(&mut program);
+
             let mut compiler = GoCompiler::new();
             let compile_dir = PathBuf::from(".dist/runtime");
             std::fs::create_dir_all(&compile_dir)?;
             compiler.compile(program, &compile_dir)?;
 
-            // TODO: Make part of compiler
-            setup_go_test_runner(tests)?;
             std::env::set_current_dir(compile_dir)?;
             let _ = Command::new("go")
                 .arg("mod")
@@ -205,10 +210,13 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             }
         }
         Target::Js => {
+            let mut identifier_transformer = JsIdentifierTransformer::new(path.into());
+            identifier_transformer.transform(&mut program);
+
             let mut compiler = JsCompiler::new();
             let compile_dir = PathBuf::from(".dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(path, program, &compile_dir, Some(tests))?;
+            compiler.compile(path, program, &compile_dir, None)?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {

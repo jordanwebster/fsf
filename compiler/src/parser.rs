@@ -26,7 +26,9 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Item> {
         let mut items = Vec::new();
         while !self.is_at_end() {
-            if let Some(item) = self.item() { items.push(item) }
+            if let Some(item) = self.item() {
+                items.push(item)
+            }
         }
         items
     }
@@ -36,6 +38,9 @@ impl Parser {
             self.function()
         } else if self.match_token(&[TokenType::Import]) {
             self.import()
+        } else if self.match_token(&[TokenType::TestRunner]) {
+            self.consume(TokenType::Semicolon, "Expect ';' after item")
+                .map(|_| Item::TestRunner)
         } else {
             Err(ParseError::SyntaxError(
                 self.peek().clone(),
@@ -197,13 +202,19 @@ impl Parser {
     // }
 
     fn maybe_statement(&mut self) -> Result<MaybeStatement, ParseError> {
-        if self.match_token(&[TokenType::Let, TokenType::Print, TokenType::AssertEq]) {
+        if self.match_token(&[
+            TokenType::Let,
+            TokenType::Print,
+            TokenType::AssertEq,
+            TokenType::RunTest,
+        ]) {
             match self.previous().token_type {
                 TokenType::Let => Ok(MaybeStatement::Statement(self.let_declaration()?)),
 
                 // TODO: Remove these as builtins
                 TokenType::Print => Ok(MaybeStatement::Statement(self.print_statement()?)),
                 TokenType::AssertEq => Ok(MaybeStatement::Statement(self.assert_eq_statement()?)),
+                TokenType::RunTest => Ok(MaybeStatement::Statement(self.run_test_statement()?)),
                 ref t => panic!("Unexpected statement type {:?}", t),
             }
         } else {
@@ -249,6 +260,20 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')'")?;
         self.consume(TokenType::Semicolon, "Expect ';'")?;
         Ok(Statement::AssertEq(left, right))
+    }
+
+    fn run_test_statement(&mut self) -> Result<Statement, ParseError> {
+        self.consume(TokenType::LeftParen, "Expect '('")?;
+        let test_name = self.consume(TokenType::String, "Expect test name")?.clone();
+        self.consume(TokenType::Comma, "Expect ',' after test name")?;
+        let function_name = Box::new(self.expression()?);
+        self.consume(TokenType::RightParen, "Expect ')'")?;
+        self.consume(TokenType::Semicolon, "Expect ';'")?;
+
+        Ok(Statement::RunTest {
+            test_name,
+            function_name,
+        })
     }
 
     fn expression(&mut self) -> Result<Expression, ParseError> {

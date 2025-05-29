@@ -23,4 +23,5 @@ pub enum Item {
     Import {
         path: Vec<String>,
     },
+    TestRunner,
 }

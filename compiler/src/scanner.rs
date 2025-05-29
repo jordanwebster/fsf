@@ -317,6 +317,10 @@ impl Scanner {
             "else" => TokenType::Else,
             "assert_eq" => TokenType::AssertEq,
             "import" => TokenType::Import,
+
+            // Builtins.
+            "__RUN_TEST" => TokenType::RunTest,
+            "__TEST_RUNNER" => TokenType::TestRunner,
             _ => TokenType::Identifier,
         };
 

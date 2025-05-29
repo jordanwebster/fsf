@@ -124,6 +124,7 @@ impl JsCompiler {
                 }
             }
             Item::Import { .. } => "".to_string(),
+            Item::TestRunner => todo!(),
         }
     }
 
@@ -142,6 +143,7 @@ impl JsCompiler {
                     self.compile_expression(right),
                 )
             }
+            Statement::RunTest { .. } => todo!(),
         }
     }
 
@@ -187,12 +189,12 @@ impl JsCompiler {
             }
             ExpressionWithoutBlock::Literal(literal) => self.compile_literal(&literal),
             ExpressionWithoutBlock::Unary { .. } => todo!(),
-            ExpressionWithoutBlock::Variable(identifier) => {
-                self.name_map
-                        .get(&identifier.lexeme)
-                        .unwrap_or(&identifier.lexeme)
-                        .clone().to_string()
-            }
+            ExpressionWithoutBlock::Variable(identifier) => self
+                .name_map
+                .get(&identifier.lexeme)
+                .unwrap_or(&identifier.lexeme)
+                .clone()
+                .to_string(),
             ExpressionWithoutBlock::Assignment { .. } => todo!(),
             ExpressionWithoutBlock::Html { .. } => todo!(),
             ExpressionWithoutBlock::FString { .. } => todo!(),

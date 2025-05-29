@@ -31,6 +31,7 @@ fn walk_item(item: &mut Item, visitor: &mut impl AstVisitor) {
         Item::Function { body, .. } => walk_block(body, visitor),
         Item::Component { body, .. } => walk_block(body, visitor),
         Item::Import { .. } => (),
+        Item::TestRunner => (),
     }
 }
 
@@ -50,6 +51,7 @@ fn walk_statement(statement: &mut Statement, visitor: &mut impl AstVisitor) {
         Statement::Print(expression) => walk_expression(expression, visitor),
         Statement::Expression(expression) => walk_expression(expression, visitor),
         Statement::Let { expression, .. } => walk_expression(expression, visitor),
+        Statement::RunTest { function_name, .. } => walk_expression(function_name, visitor),
         Statement::AssertEq(left, right) => {
             walk_expression(left, visitor);
             walk_expression(right, visitor);
@@ -153,17 +155,21 @@ impl AstVisitor for GoIdentifierTransformer {
     fn visit_item(&mut self, item: &mut Item) {
         match item {
             Item::Function { name, .. } => {
+                if name == "main" {
+                    return;
+                }
+
                 let new_name = format!(
                     "{}_{}",
                     self.current_module
                         .as_ref()
                         .unwrap()
+                        .with_extension("")
                         .strip_prefix(&self.root)
                         .unwrap()
                         .iter()
                         .map(|p| p.to_string_lossy())
-                        .join("_")
-                        .to_uppercase(),
+                        .join("_"),
                     name
                 );
                 name.clear();
@@ -171,28 +177,42 @@ impl AstVisitor for GoIdentifierTransformer {
             }
             Item::Import { path } => {
                 let name = path.last().unwrap().to_string();
-                let module_path = self
+                let full_path = self
                     .current_module
                     .as_ref()
                     .unwrap()
+                    .parent()
+                    .unwrap()
+                    .strip_prefix(&self.root)
                     .iter()
-                    .map(|p| p.to_string_lossy());
-                let mut full_path = module_path.chain(path.iter().map(std::borrow::Cow::from));
-                self.name_map
-                    .insert(name, full_path.join("_").to_uppercase());
+                    .map(|p| p.to_string_lossy())
+                    .filter(|p| p != "")
+                    .chain(path.iter().map(std::borrow::Cow::from))
+                    .join("_");
+                self.name_map.insert(name, full_path);
             }
             _ => (),
         }
     }
 
     fn visit_expression_without_block(&mut self, expr: &mut ExpressionWithoutBlock) {
-        if let ExpressionWithoutBlock::Literal(Literal::Identifier(name)) = expr {
-            if let Some(new_name) = self.name_map.get(name) {
-                name.clear();
-                name.push_str(new_name);
+        if let ExpressionWithoutBlock::Variable(token) = expr {
+            if let Some(new_name) = self.name_map.get(&token.lexeme) {
+                token.lexeme = new_name.clone();
+                token.value = Some(Literal::Identifier(new_name.clone()));
             }
         }
     }
+}
+
+pub struct JsIdentifierTransformer {}
+
+impl JsIdentifierTransformer {
+    pub fn new(path: PathBuf) -> Self {
+        Self {}
+    }
+
+    pub fn transform(&mut self, program: &mut Program) {}
 }
 
 const TEST_RUNNER_TEMPLATE: &str = include_str!("templates/test_runner.fsf");
@@ -210,10 +230,6 @@ impl TestRunnerTransformer {
             current_module: None,
             root,
         }
-    }
-
-    pub fn visit_module(&mut self, module: &mut Module) {
-        self.current_module = Some(module.path.clone());
     }
 
     pub fn transform(&mut self, program: &mut Program) {
@@ -235,7 +251,7 @@ impl TestRunnerTransformer {
             .replace("/* replace_imports */", &imports)
             .replace("/* replace_tests */", &tests);
 
-        let test_runner = parse_module(contents, PathBuf::from("main.fsf")).unwrap();
+        let test_runner = parse_module(contents, self.root.join("main.fsf")).unwrap();
         program.push(test_runner);
 
         // TODO: Set up pipelining this transformer with the name transformer before compilation
@@ -245,6 +261,10 @@ impl TestRunnerTransformer {
 }
 
 impl AstVisitor for TestRunnerTransformer {
+    fn visit_module(&mut self, module: &mut Module) {
+        self.current_module = Some(module.path.clone());
+    }
+
     fn visit_item(&mut self, item: &mut Item) {
         match item {
             Item::Function { name, .. } if name.starts_with("test_") => {
@@ -253,8 +273,10 @@ impl AstVisitor for TestRunnerTransformer {
                         .as_ref()
                         .unwrap()
                         .strip_prefix(&self.root)
-                        .map(|p| p.to_string_lossy())
+                        .unwrap()
+                        .with_extension("")
                         .iter()
+                        .map(|p| p.to_string_lossy())
                         .join("::"),
                     name.clone(),
                 ));

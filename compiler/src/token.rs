@@ -70,6 +70,10 @@ pub enum TokenType {
     AssertEq,
     Import,
 
+    // Builtins.
+    RunTest,
+    TestRunner,
+
     EOF,
 }
 

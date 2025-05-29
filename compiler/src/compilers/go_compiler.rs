@@ -28,7 +28,7 @@ impl GoCompiler {
             let mut output_file = File::create(&output_path)?;
             output_file.write_all("package main\n".as_bytes())?;
             // TODO: Propagate this information up via the parser
-            if output.contains("fmt.Println") || output.contains("fmt.Sprintf") {
+            if output.contains("fmt.") {
                 output_file.write_all("import \"fmt\"\n".as_bytes())?;
             }
             output_file.write_all(output.as_bytes())?;
@@ -111,7 +111,21 @@ impl GoCompiler {
                     None => format!("func {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
-            Item::Import { .. } => todo!(),
+            Item::Import { .. } => "".to_string(),
+            Item::TestRunner => r#"
+                func runTest(test func(), name string) {
+                    defer func() {
+                        if err := recover(); err != nil {
+                            fmt.Print(" fail\n")
+                        }
+                    }()
+
+                    fmt.Printf("%s...", name)
+                    test()
+                    fmt.Print(" pass\n")
+                }
+                "#
+            .to_string(),
         }
     }
 
@@ -120,9 +134,7 @@ impl GoCompiler {
             Statement::Print(expr) => format!("fmt.Println({})\n", self.compile_expression(expr)),
             Statement::Expression(expr) => format!("{}\n", self.compile_expression(expr)),
             Statement::Let {
-                token,
-                expression,
-                ..
+                token, expression, ..
             } => match expression {
                 Expression::WithoutBlock(expr) => {
                     format!(
@@ -161,6 +173,20 @@ impl GoCompiler {
                     self.compile_expression(left),
                     self.compile_expression(right),
                 )
+            }
+            Statement::RunTest {
+                test_name,
+                function_name,
+            } => {
+                if let Some(Literal::String(test_name)) = test_name.value {
+                    format!(
+                        "runTest({}, \"{}\")\n",
+                        self.compile_expression(*function_name),
+                        test_name
+                    )
+                } else {
+                    panic!("Test name must be a string");
+                }
             }
         }
     }

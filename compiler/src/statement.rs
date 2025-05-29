@@ -17,4 +17,8 @@ pub enum Statement {
         mutable: bool,
     },
     AssertEq(Expression, Expression),
+    RunTest {
+        test_name: Token,
+        function_name: Box<Expression>,
+    },
 }

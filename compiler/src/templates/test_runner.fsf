@@ -1,5 +1,7 @@
 /* replace_imports */
 
-func main() -> void {
+__TEST_RUNNER;
+
+fn main() -> void {
     /* replace_tests */
 }
