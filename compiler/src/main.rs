@@ -9,9 +9,8 @@ use crate::scanner::Scanner;
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::Parser as _;
-use itertools::Itertools;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -22,7 +21,6 @@ mod item;
 mod parser;
 mod scanner;
 mod statement;
-mod test_collector;
 mod token;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -250,26 +248,5 @@ fn setup_runtime() -> Result<(), std::io::Error> {
             "Command execution failed",
         ));
     };
-    Ok(())
-}
-
-fn setup_go_test_runner(tests: Vec<String>) -> Result<()> {
-    let input_file_path = Path::new("../test_runner/test_runner.go");
-    let output_file_path = Path::new(".dist/runtime/main.go");
-
-    let mut content = String::new();
-    let mut file = File::open(input_file_path)?;
-    file.read_to_string(&mut content)?;
-
-    let replacement = tests
-        .iter()
-        .map(|t| format!("runner.runTest({t}, \"{t}\")"))
-        .join("\n");
-
-    let new_content = content.replace("/* replace: tests */", &replacement);
-
-    let mut output_file = File::create(output_file_path)?;
-    output_file.write_all(new_content.as_bytes())?;
-
     Ok(())
 }

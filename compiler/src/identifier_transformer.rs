@@ -187,7 +187,7 @@ impl AstVisitor for GoIdentifierTransformer {
                     .strip_prefix(&self.root)
                     .iter()
                     .map(|p| p.to_string_lossy())
-                    .filter(|p| p != "")
+                    .filter(|p| !p.is_empty())
                     .chain(path.iter().map(std::borrow::Cow::from))
                     .join("_");
                 self.name_map.insert(name, full_path);
@@ -209,11 +209,11 @@ impl AstVisitor for GoIdentifierTransformer {
 pub struct JsIdentifierTransformer {}
 
 impl JsIdentifierTransformer {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(_path: PathBuf) -> Self {
         Self {}
     }
 
-    pub fn transform(&mut self, program: &mut Program) {}
+    pub fn transform(&mut self, _program: &mut Program) {}
 }
 
 const TEST_RUNNER_TEMPLATE: &str = include_str!("templates/test_runner.fsf");
