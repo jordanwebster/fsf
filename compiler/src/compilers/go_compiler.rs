@@ -166,7 +166,7 @@ impl GoCompiler {
             },
             Statement::AssertEq(left, right) => {
                 format!(
-                    "if ({} != {}) {{\npanic(\"{} != {}\")}}\n",
+                    "if ({} != {}) {{\npanic(`{} != {}`)}}\n",
                     self.compile_expression(left.clone()),
                     self.compile_expression(right.clone()),
                     // TODO: Replace with source not compiled form

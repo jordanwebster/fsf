@@ -1,0 +1,6 @@
+fn test_simple_fstring() {
+    let name = "John";
+    let x = `Hello {name}`;
+
+    assert_eq(x, "Hello John");
+}

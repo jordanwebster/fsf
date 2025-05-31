@@ -1,8 +1,8 @@
 use crate::compilers::Program;
-use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock};
+use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk};
 use crate::item::Item;
 use crate::statement::Statement;
-use crate::token::Literal;
+use crate::token::{Literal, TokenType};
 use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -159,12 +159,40 @@ impl JsCompiler {
 
     fn compile_statement(&mut self, statement: Statement) -> String {
         match statement {
-            Statement::Print(expr) => format!("console.log({})\n", self.compile_expression(expr)),
-            Statement::Expression(_) => todo!(),
-            Statement::Let { .. } => todo!(),
+            Statement::Print(expr) => format!("console.log({});\n", self.compile_expression(expr)),
+            Statement::Expression(expr) => format!("{}\n", self.compile_expression(expr)),
+            Statement::Let {
+                token, expression, ..
+            } => match expression {
+                Expression::WithoutBlock(expr) => format!(
+                    "let {} = {};\n",
+                    token.value.unwrap(),
+                    self.compile_expression(Expression::WithoutBlock(expr))
+                ),
+                Expression::WithBlock(expr) => match expr {
+                    ExpressionWithBlock::Block(block) => {
+                        let statements_str = block
+                            .statements
+                            .into_iter()
+                            .map(|stmt| self.compile_statement(stmt))
+                            .join("");
+                        if let Some(expr) = block.expr {
+                            format!(
+                                "{}let {} = {};\n",
+                                statements_str,
+                                token.value.unwrap(),
+                                self.compile_expression(expr)
+                            )
+                        } else {
+                            statements_str
+                        }
+                    }
+                    ExpressionWithBlock::If { .. } => todo!(),
+                },
+            },
             Statement::AssertEq(left, right) => {
                 format!(
-                    "if ({} != {}) {{\nthrow new Error(\"{} != {}\");\n}}\n",
+                    "if ({} != {}) {{\nthrow new Error(`{} != {}`);\n}}\n",
                     self.compile_expression(left.clone()),
                     self.compile_expression(right.clone()),
                     // TODO: Replace with source not compiled form
@@ -199,8 +227,33 @@ impl JsCompiler {
         }
     }
 
-    fn compile_expression_with_block(&mut self, _: ExpressionWithBlock) -> String {
-        todo!()
+    fn compile_expression_with_block(&mut self, expr: ExpressionWithBlock) -> String {
+        match expr {
+            ExpressionWithBlock::Block(block) => block
+                .statements
+                .into_iter()
+                .map(|s| self.compile_statement(s))
+                .join(""),
+            ExpressionWithBlock::If { expr, then, r#else } => {
+                // TODO: Handle the case there is a dangling expression
+                let mut s = format!(
+                    "if ({}) {{\n{}}}",
+                    self.compile_expression(*expr),
+                    then.statements
+                        .into_iter()
+                        .map(|s| self.compile_statement(s))
+                        .join("")
+                );
+                if let Some(r#else) = r#else {
+                    s = format!(
+                        "{} else {{\n{}}}\n",
+                        s,
+                        self.compile_expression(Expression::WithBlock(*r#else))
+                    );
+                }
+                s
+            }
+        }
     }
 
     fn compile_expression_without_block(&mut self, expr: ExpressionWithoutBlock) -> String {
@@ -225,7 +278,20 @@ impl JsCompiler {
                         .join(", ")
                 )
             }
-            ExpressionWithoutBlock::Lambda { .. } => todo!(),
+            ExpressionWithoutBlock::Lambda { parameters, body } => {
+                let params = parameters.iter().map(|p| format!("{}", p.name,)).join(", ");
+                match *body {
+                    Expression::WithoutBlock(expression) => {
+                        // TODO: Add proper type inference
+                        format!(
+                            "({}) => {{\nreturn {};\n}}\n",
+                            params,
+                            self.compile_expression_without_block(expression)
+                        )
+                    }
+                    Expression::WithBlock(_expression) => todo!(),
+                }
+            }
             ExpressionWithoutBlock::Grouping(expr) => {
                 format!("({})", self.compile_expression(*expr))
             }
@@ -237,9 +303,30 @@ impl JsCompiler {
                 .unwrap_or(&identifier.lexeme)
                 .clone()
                 .to_string(),
-            ExpressionWithoutBlock::Assignment { .. } => todo!(),
+            ExpressionWithoutBlock::Assignment {
+                name,
+                value,
+                operator,
+            } => match operator.token_type {
+                TokenType::Equal => {
+                    format!("{} = {};", name.lexeme, self.compile_expression(*value))
+                }
+                TokenType::PlusEqual => {
+                    format!("{} += {};", name.lexeme, self.compile_expression(*value))
+                }
+                _ => panic!("Unexpected token type in assignment: {}", operator.lexeme),
+            },
             ExpressionWithoutBlock::Html { .. } => todo!(),
-            ExpressionWithoutBlock::FString { .. } => todo!(),
+            ExpressionWithoutBlock::FString { chunks } => {
+                let format_string = chunks
+                    .iter()
+                    .map(|chunk| match chunk {
+                        FStringChunk::Literal(string) => string.to_string(),
+                        FStringChunk::Identifier(string) => format!("${{{string}}}"),
+                    })
+                    .join("");
+                format!("`{}`", format_string)
+            }
         }
     }
 

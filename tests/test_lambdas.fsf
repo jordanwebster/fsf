@@ -1,0 +1,4 @@
+fn test_simple_lambda() {
+    let f = |x| 2*x;
+    assert_eq(f(1), 2);
+}

@@ -1,0 +1,19 @@
+fn test_let() {
+    let x = 7;
+    assert_eq(x, 7);
+}
+
+fn test_let_with_block_expression() {
+    let x = {
+        let y = 7;
+        7 * y
+    };
+
+    assert_eq(x, 49);
+}
+
+fn test_assignment() {
+    let mut x = 1;
+    x += 1;
+    assert_eq(x, 2);
+}
