@@ -10,6 +10,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
+const MAIN_BOOTSTRAP: &str = include_str!("../bootstrap/js_bootstrap.js");
+
 pub struct JsCompiler {
     name_map: HashMap<String, String>,
 }
@@ -48,6 +50,7 @@ impl JsCompiler {
             output_file.write_all(output.as_bytes())?;
         }
 
+        output_file.write_all(MAIN_BOOTSTRAP.as_bytes())?;
         Ok(())
     }
 
@@ -124,7 +127,18 @@ impl JsCompiler {
                 }
             }
             Item::Import { .. } => "".to_string(),
-            Item::TestRunner => todo!(),
+            Item::TestRunner => r#"
+                function runTest(test, name) {
+                    process.stdout.write(`${name}...`);
+
+                    try {
+                        test();
+                        process.stdout.write(" pass\n");
+                    } catch (err) {
+                        process.stdout.write(" fail\n");
+                    }
+                }"#
+            .to_string(),
         }
     }
 
@@ -143,7 +157,20 @@ impl JsCompiler {
                     self.compile_expression(right),
                 )
             }
-            Statement::RunTest { .. } => todo!(),
+            Statement::RunTest {
+                test_name,
+                function_name,
+            } => {
+                if let Some(Literal::String(test_name)) = test_name.value {
+                    format!(
+                        "runTest({}, \"{}\")\n",
+                        self.compile_expression(*function_name),
+                        test_name
+                    )
+                } else {
+                    panic!("Test name must be a string");
+                }
+            }
         }
     }
 
