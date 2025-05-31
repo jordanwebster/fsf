@@ -61,17 +61,32 @@ impl JsCompiler {
                 module.items.iter().filter_map(|item| match item {
                     // TODO: Add resolving relative imports (not from project root)
                     Item::Import { path } => Some((path.last().unwrap().clone(), path.join("_"))),
-                    Item::Function { name, .. } => Some((
-                        name.clone(),
-                        format!(
-                            "{}_{}",
-                            Path::new(module.path.strip_prefix(root).unwrap().file_stem().unwrap())
-                                .iter()
-                                .map(|p| p.to_string_lossy())
-                                .join("_"),
-                            name
-                        ),
-                    )),
+
+                    // TODO: Add transformer step to find main function and add bootstrapping
+                    Item::Function { name, .. } => {
+                        if name == "main" {
+                            Some((name.clone(), name.clone()))
+                        } else {
+                            Some((
+                                name.clone(),
+                                format!(
+                                    "{}_{}",
+                                    Path::new(
+                                        module
+                                            .path
+                                            .strip_prefix(root)
+                                            .unwrap()
+                                            .file_stem()
+                                            .unwrap()
+                                    )
+                                    .iter()
+                                    .map(|p| p.to_string_lossy())
+                                    .join("_"),
+                                    name
+                                ),
+                            ))
+                        }
+                    }
                     _ => None,
                 })
             })
@@ -144,7 +159,7 @@ impl JsCompiler {
 
     fn compile_statement(&mut self, statement: Statement) -> String {
         match statement {
-            Statement::Print(_) => todo!(),
+            Statement::Print(expr) => format!("console.log({})\n", self.compile_expression(expr)),
             Statement::Expression(_) => todo!(),
             Statement::Let { .. } => todo!(),
             Statement::AssertEq(left, right) => {

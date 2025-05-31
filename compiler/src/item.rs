@@ -12,7 +12,7 @@ pub enum Item {
         name: String,
         parameters: Vec<Parameter>,
         body: BlockExpression,
-        return_type: String,
+        return_type: Option<String>,
     },
     // TODO: Merge into function once we have typing
     Component {

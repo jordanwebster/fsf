@@ -94,14 +94,17 @@ impl Parser {
 
         let return_type = match token.token_type {
             TokenType::Fn => {
-                self.consume(TokenType::MinusGreater, "Expect return type")?;
-                match self.match_token(&[TokenType::Identifier]) {
-                    true => Ok(Some(self.previous().clone().lexeme)),
-                    false => Err(ParseError::SyntaxError(
-                        self.previous().clone(),
-                        "Expected return type".to_string(),
-                    )),
-                }?
+                if self.match_token(&[TokenType::MinusGreater]) {
+                    match self.match_token(&[TokenType::Identifier]) {
+                        true => Ok(Some(self.previous().clone().lexeme)),
+                        false => Err(ParseError::SyntaxError(
+                            self.previous().clone(),
+                            "Expected return type".to_string(),
+                        )),
+                    }?
+                } else {
+                    None
+                }
             }
             _ => None,
         };
@@ -113,7 +116,7 @@ impl Parser {
                 name,
                 parameters,
                 body,
-                return_type: return_type.unwrap(),
+                return_type,
             }),
             TokenType::Cmpnt => Ok(Item::Component {
                 name,

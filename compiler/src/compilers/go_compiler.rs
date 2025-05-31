@@ -69,7 +69,7 @@ impl GoCompiler {
                         "func {}({}) {} {{\n{}\nreturn {}\n}}\n",
                         name,
                         params,
-                        return_type,
+                        return_type.unwrap(),
                         statements,
                         self.compile_expression(expr)
                     ),

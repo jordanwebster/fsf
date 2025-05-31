@@ -167,10 +167,16 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             }
         }
         Target::Js => {
-            todo!();
-            // let mut compiler = JsCompiler::new();
-            // compiler.compile(program)?;
-            // Ok(())
+            let mut compiler = JsCompiler::new();
+            let compile_dir = PathBuf::from("./dist/js");
+            std::fs::create_dir_all(&compile_dir)?;
+            compiler.compile(path, program, &compile_dir, None)?;
+
+            std::env::set_current_dir(compile_dir)?;
+            match Command::new("node").arg("main.js").status()?.success() {
+                true => Ok(()),
+                false => Err(anyhow!("Failed to run node")),
+            }
         }
     }
 }

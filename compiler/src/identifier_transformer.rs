@@ -155,6 +155,7 @@ impl AstVisitor for GoIdentifierTransformer {
     fn visit_item(&mut self, item: &mut Item) {
         match item {
             Item::Function { name, .. } => {
+                // TODO: Add transformer step to find main function and add bootstrapping
                 if name == "main" {
                     return;
                 }

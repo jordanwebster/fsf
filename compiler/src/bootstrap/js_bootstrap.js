@@ -1,1 +1,1 @@
-main_main();
+main();
