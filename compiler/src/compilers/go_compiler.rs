@@ -9,11 +9,15 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub struct GoCompiler {}
+pub struct GoCompiler {
+    building_html: bool,
+}
 
 impl GoCompiler {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            building_html: false,
+        }
     }
 
     pub fn compile(&mut self, program: Program, compile_dir: &Path) -> Result<()> {
@@ -102,7 +106,7 @@ impl GoCompiler {
                     .join(", ");
                 match body.expr {
                     Some(expr) => format!(
-                        "func {}({}) string {{\n{}\nreturn `{}`\n}}\n",
+                        "func {}({}) string {{\n{}\nreturn {}\n}}\n",
                         name,
                         params,
                         statements,
@@ -294,13 +298,43 @@ impl GoCompiler {
                     .join(", ");
                 format!("fmt.Sprintf(\"{}\", {})", format_string, arguments)
             }
-            ExpressionWithoutBlock::Html { name, inner } => {
-                format!(
-                    "<{}>\n{}\n</{}>",
-                    name.lexeme,
-                    self.compile_expression(*inner),
-                    name.lexeme
-                )
+            ExpressionWithoutBlock::Html { name, inner, .. } => {
+                // TODO: Preserve newlines for HTML. Newlines between inline elements get
+                // converted into spaces.
+                let mut output = String::new();
+
+                let require_cleanup = if self.building_html {
+                    false
+                } else {
+                    output.push_str("func() string {\nbuilder := NewHTMLBuilder()\n");
+                    self.building_html = true;
+                    true
+                };
+
+                output.push_str(&format!("builder.beginElement(\"{}\")\n", name.lexeme));
+                for expression in inner {
+                    match expression {
+                        Expression::WithoutBlock(ExpressionWithoutBlock::FString { .. })
+                        | Expression::WithoutBlock(ExpressionWithoutBlock::Literal(
+                            Literal::String(_),
+                        )) => {
+                            let compiled_expression = self.compile_expression(expression);
+                            output
+                                .push_str(&format!("builder.addString({})\n", compiled_expression));
+                        }
+                        _ => {
+                            output.push_str(&self.compile_expression(expression));
+                        }
+                    }
+                }
+                output.push_str("builder.endElement()\n");
+
+                if require_cleanup {
+                    output.push_str("return builder.build()\n}()");
+                    self.building_html = false;
+                }
+
+                output
             }
             ExpressionWithoutBlock::Lambda { parameters, body } => {
                 let params = parameters

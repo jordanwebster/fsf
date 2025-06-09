@@ -399,6 +399,11 @@ impl Parser {
     fn comparison(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
         let mut expr = self.term()?;
 
+        if let ExpressionWithoutBlock::Html { .. } = expr {
+            // TODO: Make HTML it's own top level expression flavour?
+            return Ok(expr);
+        }
+
         while self.match_token(&[
             TokenType::Greater,
             TokenType::GreaterEqual,
@@ -589,12 +594,33 @@ impl Parser {
         let name = self
             .consume(TokenType::Identifier, "Expect identifier")?
             .clone();
-        // TODO: Parse attributes
+
+        let mut attributes = vec![];
+        while self.match_token(&[TokenType::Identifier]) {
+            let attribute_name = self.previous().clone();
+            self.consume(TokenType::Equal, "Expect =")?;
+            self.consume(
+                TokenType::LeftBrace,
+                "Expect braces '{}' around attribute values",
+            )?;
+            // TODO: Add typing for builtin HTML attributes, i.e.
+            // onclick expects a lambda, href expects string etc.
+            let value = self.expression()?;
+            attributes.push((attribute_name, value));
+            self.consume(
+                TokenType::RightBrace,
+                "Expect braces '{}' around attribute values",
+            )?;
+        }
+
         self.consume(TokenType::Greater, "Expect to close html tag")?;
 
-        // TODO: Allow HTML without an inner expression
-        let inner = self.expression()?;
-        self.consume(TokenType::LessSlash, "Expect closing HTML tag")?;
+        let mut inner = vec![];
+        while !self.match_token(&[TokenType::LessSlash]) {
+            let expression = self.expression()?;
+            inner.push(expression);
+        }
+
         let closing_name = self.consume(TokenType::Identifier, "Expect identifier")?;
         if name.lexeme != closing_name.lexeme {
             return Err(ParseError::SyntaxError(
@@ -607,6 +633,7 @@ impl Parser {
         Ok(ExpressionWithoutBlock::Html {
             name,
             inner: inner.into(),
+            attributes,
         })
     }
 

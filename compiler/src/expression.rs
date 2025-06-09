@@ -48,7 +48,8 @@ pub enum ExpressionWithoutBlock {
     },
     Html {
         name: Token,
-        inner: Box<Expression>,
+        inner: Vec<Expression>,
+        attributes: Vec<(Token, Expression)>,
     },
     FString {
         chunks: Vec<FStringChunk>,

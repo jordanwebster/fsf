@@ -103,7 +103,11 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
         ExpressionWithoutBlock::Assignment { value, .. } => {
             walk_expression_without_block(value, visitor)
         }
-        ExpressionWithoutBlock::Html { inner, .. } => walk_expression(inner, visitor),
+        ExpressionWithoutBlock::Html { inner, .. } => {
+            for expression in inner {
+                walk_expression(expression, visitor)
+            }
+        }
 
         // NO OPS
         ExpressionWithoutBlock::Literal(_) => (),
