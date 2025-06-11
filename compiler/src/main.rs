@@ -81,12 +81,36 @@ fn serve(path: &Path) -> Result<()> {
         .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
 
+    let js_program = program.clone();
+
     let compile_dir = PathBuf::from(".dist/runtime");
     std::fs::create_dir_all(&compile_dir)?;
     let mut compiler = GoCompiler::new();
     compiler.compile(program, &compile_dir)?;
 
     setup_runtime()?;
+
+    // Compile Javascript
+    let js_dir = compile_dir.join("javascript");
+    std::fs::create_dir_all(&js_dir)?;
+    Command::new("rsync")
+        .arg("-a")
+        .arg("../javascript/")
+        .arg(&js_dir)
+        .status()?;
+    let routes_dir = js_dir.join("routes");
+    std::fs::create_dir_all(&routes_dir)?;
+    // TODO: Filter out modules in app/ directory
+    for module in js_program {
+        let mut js_compiler = JsCompiler::new();
+        js_compiler.compile(path, vec![module], &routes_dir, false)?;
+    }
+
+    let cwd = std::env::current_dir()?;
+    std::env::set_current_dir(&js_dir)?;
+    Command::new("npm").arg("install").status()?;
+    Command::new("npm").arg("run").arg("build").status()?;
+    std::env::set_current_dir(cwd)?;
 
     std::env::set_current_dir(compile_dir)?;
     let _ = Command::new("go")
@@ -168,7 +192,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             let mut compiler = JsCompiler::new();
             let compile_dir = PathBuf::from("./dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(path, program, &compile_dir, None)?;
+            compiler.compile(path, program, &compile_dir, true)?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {
@@ -220,7 +244,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             let mut compiler = JsCompiler::new();
             let compile_dir = PathBuf::from(".dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(path, program, &compile_dir, None)?;
+            compiler.compile(path, program, &compile_dir, true)?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {

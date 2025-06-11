@@ -1,6 +1,7 @@
 use crate::item::Item;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub struct Module {
     pub path: PathBuf,
     pub items: Vec<Item>,

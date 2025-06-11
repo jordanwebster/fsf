@@ -28,16 +28,15 @@ impl JsCompiler {
         root: &Path,
         program: Program,
         compile_dir: &Path,
-        tests: Option<Vec<String>>,
+        is_exec_mode: bool,
     ) -> Result<()> {
-        let output_path = compile_dir.join("main.js");
+        let output_path = match is_exec_mode {
+            true => compile_dir.join("main.js"),
+            false => compile_dir.join("index.jsx"),
+        };
         let mut output_file = File::create(&output_path)?;
 
         let name_map = Self::construct_name_map(root, &program);
-        if let Some(tests) = tests {
-            let tests = tests.into_iter().map(|t| name_map[&t].clone()).collect();
-            Self::setup_test_runner(tests, &mut output_file)?;
-        }
         self.name_map = name_map;
 
         for module in program {
@@ -50,7 +49,9 @@ impl JsCompiler {
             output_file.write_all(output.as_bytes())?;
         }
 
-        output_file.write_all(MAIN_BOOTSTRAP.as_bytes())?;
+        if is_exec_mode {
+            output_file.write_all(MAIN_BOOTSTRAP.as_bytes())?;
+        }
         Ok(())
     }
 
@@ -114,7 +115,29 @@ impl JsCompiler {
 
     fn compile_item(&mut self, item: Item) -> String {
         match item {
-            Item::Component { .. } => todo!(),
+            Item::Component {
+                name,
+                parameters,
+                body,
+            } => {
+                let statements = body
+                    .statements
+                    .into_iter()
+                    .map(|s| self.compile_statement(s))
+                    .join("");
+
+                let params = parameters.iter().map(|p| p.name.clone()).join(", ");
+
+                // TODO: Typechecker will ensure we are returning HTML
+                let html_expr = body.expr.unwrap();
+                format!(
+                    "function {}({}) {{\n{}\n return {}\n}}\n",
+                    name,
+                    params,
+                    statements,
+                    self.compile_expression(html_expr)
+                )
+            }
             Item::Function {
                 name,
                 parameters,
@@ -309,14 +332,43 @@ impl JsCompiler {
                 operator,
             } => match operator.token_type {
                 TokenType::Equal => {
-                    format!("{} = {};", name.lexeme, self.compile_expression(*value))
+                    format!("{} = {}", name.lexeme, self.compile_expression(*value))
                 }
                 TokenType::PlusEqual => {
-                    format!("{} += {};", name.lexeme, self.compile_expression(*value))
+                    format!("{} += {}", name.lexeme, self.compile_expression(*value))
                 }
                 _ => panic!("Unexpected token type in assignment: {}", operator.lexeme),
             },
-            ExpressionWithoutBlock::Html { .. } => todo!(),
+            ExpressionWithoutBlock::Html {
+                name,
+                inner,
+                attributes,
+            } => {
+                let react_attribute_map =
+                    HashMap::from([("onclick".to_string(), "onClick".to_string())]);
+                let attrs = attributes
+                    .into_iter()
+                    .map(|(name, expr)| {
+                        format!(
+                            "{}={{{}}}",
+                            react_attribute_map
+                                .get(&name.lexeme)
+                                .unwrap_or(&name.lexeme),
+                            self.compile_expression(expr)
+                        )
+                    })
+                    .join(" ");
+                let children = inner
+                    .into_iter()
+                    .map(|e| match e {
+                        Expression::WithoutBlock(ExpressionWithoutBlock::Html { .. }) => {
+                            self.compile_expression(e)
+                        }
+                        _ => format!("{{{}}}", self.compile_expression(e)),
+                    })
+                    .join("\n");
+                format!("<{} {}>{}</{}>", name.lexeme, attrs, children, name.lexeme)
+            }
             ExpressionWithoutBlock::FString { chunks } => {
                 let format_string = chunks
                     .iter()
