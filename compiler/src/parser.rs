@@ -95,8 +95,17 @@ impl Parser {
         let return_type = match token.token_type {
             TokenType::Fn => {
                 if self.match_token(&[TokenType::MinusGreater]) {
-                    match self.match_token(&[TokenType::Identifier]) {
-                        true => Ok(Some(self.previous().clone().lexeme)),
+                    // TODO: Remove allowing strings. This is just to help with compiling to Go
+                    // for now.
+                    match self.match_token(&[TokenType::Identifier, TokenType::String]) {
+                        true => {
+                            let previous = self.previous().clone();
+                            match previous.token_type {
+                                TokenType::Identifier => Ok(Some(previous.lexeme)),
+                                TokenType::String => Ok(Some(previous.value.unwrap().to_string())),
+                                _ => panic!("Impossible to reach"),
+                            }
+                        }
                         false => Err(ParseError::SyntaxError(
                             self.previous().clone(),
                             "Expected return type".to_string(),

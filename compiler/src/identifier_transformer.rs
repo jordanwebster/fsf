@@ -186,6 +186,7 @@ impl AstVisitor for GoIdentifierTransformer {
                         .join("_"),
                     name
                 );
+                self.name_map.insert(name.clone(), new_name.clone());
                 name.clear();
                 name.push_str(&new_name);
             }

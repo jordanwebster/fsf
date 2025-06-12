@@ -3,3 +3,13 @@ fn test_simple_array() {
     assert_eq(x[0], 1);
     assert_eq(x[1], 2);
 }
+
+fn return_array() -> "[2]int" {
+    [1, 2]
+}
+
+fn test_array_from_return() {
+    let x = return_array();
+    assert_eq(x[0], 1);
+    assert_eq(x[1], 2);
+}
