@@ -131,7 +131,7 @@ impl JsCompiler {
                 // TODO: Typechecker will ensure we are returning HTML
                 let html_expr = body.expr.unwrap();
                 format!(
-                    "function {}({}) {{\n{}\n return {}\n}}\n",
+                    "function {}({}) {{\n{}\n return ({});\n}}\n",
                     name,
                     params,
                     statements,

@@ -4,15 +4,13 @@
   "description": "FSF framework bundler - JSX to ES modules with import maps",
   "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "clean": "rimraf dist"
+    "build": "node build.js"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "esbuild": "^0.19.0",
-    "rimraf": "^5.0.0"
+    "esbuild": "^0.19.0"
   }
 }

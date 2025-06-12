@@ -98,12 +98,10 @@ fn serve(path: &Path) -> Result<()> {
         .arg("../javascript/")
         .arg(&js_dir)
         .status()?;
-    let routes_dir = js_dir.join("routes");
-    std::fs::create_dir_all(&routes_dir)?;
     // TODO: Filter out modules in app/ directory
     for module in js_program {
         let mut js_compiler = JsCompiler::new();
-        js_compiler.compile(path, vec![module], &routes_dir, false)?;
+        js_compiler.compile(path, vec![module], &js_dir, false)?;
     }
 
     let cwd = std::env::current_dir()?;
