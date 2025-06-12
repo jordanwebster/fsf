@@ -95,6 +95,10 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
                 walk_expression(argument, visitor);
             }
         }
+        ExpressionWithoutBlock::Index { callee, index } => {
+            walk_expression_without_block(callee, visitor);
+            walk_expression(index, visitor)
+        }
         ExpressionWithoutBlock::Lambda { body, .. } => walk_expression(body, visitor),
         ExpressionWithoutBlock::Grouping(expr) => walk_expression_without_block(expr, visitor),
         ExpressionWithoutBlock::Unary { right, .. } => {
@@ -105,6 +109,11 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
         }
         ExpressionWithoutBlock::Html { inner, .. } => {
             for expression in inner {
+                walk_expression(expression, visitor)
+            }
+        }
+        ExpressionWithoutBlock::Array { elements, .. } => {
+            for expression in elements {
                 walk_expression(expression, visitor)
             }
         }

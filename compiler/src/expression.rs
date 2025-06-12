@@ -30,6 +30,10 @@ pub enum ExpressionWithoutBlock {
         callee: Box<ExpressionWithoutBlock>,
         arguments: Vec<Expression>,
     },
+    Index {
+        callee: Box<ExpressionWithoutBlock>,
+        index: Box<Expression>,
+    },
     Lambda {
         parameters: Vec<LambdaParameter>,
         body: Box<Expression>,
@@ -53,6 +57,9 @@ pub enum ExpressionWithoutBlock {
     },
     FString {
         chunks: Vec<FStringChunk>,
+    },
+    Array {
+        elements: Vec<Expression>,
     },
 }
 

@@ -468,7 +468,7 @@ impl Parser {
     }
 
     fn call(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
-        let mut expr = self.primary()?;
+        let mut expr = self.index()?;
 
         while self.match_token(&[TokenType::LeftParen]) {
             expr = self.finish_call(expr)?;
@@ -497,6 +497,22 @@ impl Parser {
             callee: callee.into(),
             arguments,
         })
+    }
+
+    fn index(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut expr = self.primary()?;
+
+        while self.match_token(&[TokenType::LeftSquareBracket]) {
+            let index = self.expression()?;
+            expr = ExpressionWithoutBlock::Index {
+                callee: expr.into(),
+                index: index.into(),
+            };
+
+            self.consume(TokenType::RightSquareBracket, "Expect ']' after index")?;
+        }
+
+        Ok(expr)
     }
 
     fn primary(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -530,11 +546,30 @@ impl Parser {
         if self.match_token(&[TokenType::Pipe]) {
             return self.lambda();
         }
+        if self.match_token(&[TokenType::LeftSquareBracket]) {
+            return self.array();
+        }
 
         Err(ParseError::SyntaxError(
             self.peek().clone(),
             "Expect expression.".to_string(),
         ))
+    }
+
+    fn array(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut elements: Vec<Expression> = Vec::new();
+        if !self.check(&TokenType::RightSquareBracket) {
+            loop {
+                elements.push(self.expression()?);
+                if !self.match_token(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RightSquareBracket, "Expect ']' after elements")?;
+
+        Ok(ExpressionWithoutBlock::Array { elements })
     }
 
     fn fstring(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {

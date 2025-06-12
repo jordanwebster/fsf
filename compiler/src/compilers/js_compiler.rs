@@ -379,6 +379,20 @@ impl JsCompiler {
                     .join("");
                 format!("`{}`", format_string)
             }
+            ExpressionWithoutBlock::Array { elements } => {
+                let elements = elements
+                    .into_iter()
+                    .map(|e| self.compile_expression(e))
+                    .join(", ");
+                format!("[{}]", elements)
+            }
+            ExpressionWithoutBlock::Index { callee, index } => {
+                format!(
+                    "{}[{}]",
+                    self.compile_expression(*callee),
+                    self.compile_expression(*index)
+                )
+            }
         }
     }
 

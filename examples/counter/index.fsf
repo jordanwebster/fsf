@@ -1,8 +1,10 @@
-cmpnt index() {
-    let mut count = 0;
+import std::react;
+
+cmpnt Index() {
+    let [count, set_count] = react::use_state(0);
 
     <html>
         <span>`Count: {count}`</span>
-        <button onclick={|| count += 1}>"increment"</button>
+        <button onclick={|| set_count(count += 1)}>"increment"</button>
     </html>
 }

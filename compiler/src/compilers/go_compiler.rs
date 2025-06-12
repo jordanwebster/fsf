@@ -365,6 +365,23 @@ impl GoCompiler {
                     Expression::WithBlock(_expression) => todo!(),
                 }
             }
+            ExpressionWithoutBlock::Array { elements } => {
+                let count = elements.len();
+                // TODO: Add proper type information
+                let type_ = "int";
+                let elements = elements
+                    .into_iter()
+                    .map(|e| self.compile_expression(e))
+                    .join(", ");
+                format!("[{}]{}{{{}}}", count, type_, elements)
+            }
+            ExpressionWithoutBlock::Index { callee, index } => {
+                format!(
+                    "{}[{}]",
+                    self.compile_expression(*callee),
+                    self.compile_expression(*index)
+                )
+            }
         }
     }
 }

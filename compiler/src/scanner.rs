@@ -205,6 +205,18 @@ impl Scanner {
             '`' => self.string(tokens, true),
             '0'..='9' => self.number(tokens),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(tokens),
+            '[' => tokens.push(Token::new(
+                TokenType::LeftSquareBracket,
+                c.to_string(),
+                None,
+                self.line,
+            )),
+            ']' => tokens.push(Token::new(
+                TokenType::RightSquareBracket,
+                c.to_string(),
+                None,
+                self.line,
+            )),
             _ => todo!("Handle unexpected tokens"),
         }
     }
