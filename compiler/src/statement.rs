@@ -8,11 +8,17 @@ pub enum MaybeStatement {
 }
 
 #[derive(Debug, Clone)]
+pub enum Declaration {
+    Name(Token),
+    Array(Vec<Token>),
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     Print(Expression),
     Expression(Expression),
     Let {
-        token: Token,
+        declaration: Declaration,
         expression: Expression,
         mutable: bool,
     },

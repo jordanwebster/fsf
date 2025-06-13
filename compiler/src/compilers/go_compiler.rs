@@ -1,7 +1,7 @@
 use crate::compilers::Program;
 use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk};
 use crate::item::Item;
-use crate::statement::Statement;
+use crate::statement::{Declaration, Statement};
 use crate::token::{Literal, TokenType};
 use anyhow::Result;
 use itertools::Itertools;
@@ -138,36 +138,67 @@ impl GoCompiler {
             Statement::Print(expr) => format!("fmt.Println({})\n", self.compile_expression(expr)),
             Statement::Expression(expr) => format!("{}\n", self.compile_expression(expr)),
             Statement::Let {
-                token, expression, ..
-            } => match expression {
-                Expression::WithoutBlock(expr) => {
-                    format!(
-                        "{} := {}\n",
-                        token.value.unwrap(),
-                        self.compile_expression(Expression::WithoutBlock(expr))
-                    )
-                }
-                Expression::WithBlock(expr) => match expr {
-                    ExpressionWithBlock::Block(block) => {
-                        let statements_str = block
-                            .statements
+                declaration,
+                expression,
+                ..
+            } => {
+                // TODO: Create a unique temporary variable name generator
+                let tmp_var = "x_tmp";
+                let declaration_str = match declaration {
+                    Declaration::Name(ref name) => format!("{} := ", name.clone().value.unwrap()),
+                    Declaration::Array(ref names) => format!("{} := ", tmp_var,),
+                };
+
+                // TODO: An optimisation we can make is to use Go's multiple return values depending
+                // on the type of the expression
+                let destructuring_str = match declaration {
+                    Declaration::Name(_) => "".to_string(),
+                    Declaration::Array(names) => format!(
+                        "{}\n",
+                        names
                             .into_iter()
-                            .map(|stmt| self.compile_statement(stmt))
-                            .join("");
-                        if let Some(expr) = block.expr {
-                            format!(
-                                "{}{} := {}\n",
-                                statements_str,
-                                token.value.unwrap(),
-                                self.compile_expression(expr)
-                            )
-                        } else {
-                            statements_str
-                        }
+                            .enumerate()
+                            .map(|(i, name)| format!(
+                                "{} := {}[{}]",
+                                name.value.unwrap(),
+                                tmp_var,
+                                i
+                            ))
+                            .join("\n")
+                    ),
+                };
+                match expression {
+                    Expression::WithoutBlock(expr) => {
+                        format!(
+                            "{} {}\n{}",
+                            declaration_str,
+                            self.compile_expression(Expression::WithoutBlock(expr)),
+                            destructuring_str
+                        )
                     }
-                    ExpressionWithBlock::If { .. } => todo!(),
-                },
-            },
+                    Expression::WithBlock(expr) => match expr {
+                        ExpressionWithBlock::Block(block) => {
+                            let statements_str = block
+                                .statements
+                                .into_iter()
+                                .map(|stmt| self.compile_statement(stmt))
+                                .join("");
+                            if let Some(expr) = block.expr {
+                                format!(
+                                    "{}{} {}\n{}",
+                                    statements_str,
+                                    declaration_str,
+                                    self.compile_expression(expr),
+                                    destructuring_str
+                                )
+                            } else {
+                                statements_str
+                            }
+                        }
+                        ExpressionWithBlock::If { .. } => todo!(),
+                    },
+                }
+            }
             Statement::AssertEq(left, right) => {
                 format!(
                     "if ({} != {}) {{\npanic(`{} != {}`)}}\n",

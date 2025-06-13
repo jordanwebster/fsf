@@ -1,6 +1,7 @@
 use crate::compilers::Program;
 use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk};
 use crate::item::Item;
+use crate::statement::Declaration;
 use crate::statement::Statement;
 use crate::token::{Literal, TokenType};
 use anyhow::Result;
@@ -185,34 +186,51 @@ impl JsCompiler {
             Statement::Print(expr) => format!("console.log({});\n", self.compile_expression(expr)),
             Statement::Expression(expr) => format!("{}\n", self.compile_expression(expr)),
             Statement::Let {
-                token, expression, ..
-            } => match expression {
-                Expression::WithoutBlock(expr) => format!(
-                    "let {} = {};\n",
-                    token.value.unwrap(),
-                    self.compile_expression(Expression::WithoutBlock(expr))
-                ),
-                Expression::WithBlock(expr) => match expr {
-                    ExpressionWithBlock::Block(block) => {
-                        let statements_str = block
-                            .statements
-                            .into_iter()
-                            .map(|stmt| self.compile_statement(stmt))
-                            .join("");
-                        if let Some(expr) = block.expr {
-                            format!(
-                                "{}let {} = {};\n",
-                                statements_str,
-                                token.value.unwrap(),
-                                self.compile_expression(expr)
-                            )
-                        } else {
-                            statements_str
-                        }
+                declaration,
+                expression,
+                ..
+            } => {
+                let declaration_str = format!(
+                    "let {} =",
+                    match declaration {
+                        Declaration::Name(name) => name.value.unwrap().to_string(),
+                        Declaration::Array(names) => format!(
+                            "[{}]",
+                            names
+                                .into_iter()
+                                .map(|t| t.value.unwrap().to_string())
+                                .join(",")
+                        ),
                     }
-                    ExpressionWithBlock::If { .. } => todo!(),
-                },
-            },
+                );
+                match expression {
+                    Expression::WithoutBlock(expr) => format!(
+                        "{} {};\n",
+                        declaration_str,
+                        self.compile_expression(Expression::WithoutBlock(expr))
+                    ),
+                    Expression::WithBlock(expr) => match expr {
+                        ExpressionWithBlock::Block(block) => {
+                            let statements_str = block
+                                .statements
+                                .into_iter()
+                                .map(|stmt| self.compile_statement(stmt))
+                                .join("");
+                            if let Some(expr) = block.expr {
+                                format!(
+                                    "{}{} {};\n",
+                                    statements_str,
+                                    declaration_str,
+                                    self.compile_expression(expr)
+                                )
+                            } else {
+                                statements_str
+                            }
+                        }
+                        ExpressionWithBlock::If { .. } => todo!(),
+                    },
+                }
+            }
             Statement::AssertEq(left, right) => {
                 format!(
                     "if ({} != {}) {{\nthrow new Error(`{} != {}`);\n}}\n",

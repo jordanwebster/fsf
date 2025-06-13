@@ -3,7 +3,7 @@ use crate::expression::{
     LambdaParameter,
 };
 use crate::item::{Item, Parameter};
-use crate::statement::{MaybeStatement, Statement};
+use crate::statement::{Declaration, MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
 use thiserror::Error;
 
@@ -241,16 +241,39 @@ impl Parser {
     fn let_declaration(&mut self) -> Result<Statement, ParseError> {
         let mutable = self.match_token(&[TokenType::Mut]);
 
-        let name = self
-            .consume(TokenType::Identifier, "Expect variable name")?
-            .clone();
+        let declaration = match self.match_token(&[TokenType::LeftSquareBracket]) {
+            true => {
+                let mut names = vec![];
+                if !self.check(&TokenType::RightSquareBracket) {
+                    loop {
+                        let name = self
+                            .consume(TokenType::Identifier, "Expect variable name")?
+                            .clone();
+                        names.push(name);
+
+                        if !self.match_token(&[TokenType::Comma]) {
+                            break;
+                        }
+                    }
+                }
+
+                self.consume(TokenType::RightSquareBracket, "Expect ']'")?;
+                Declaration::Array(names)
+            }
+            false => {
+                let name = self
+                    .consume(TokenType::Identifier, "Expect variable name")?
+                    .clone();
+                Declaration::Name(name)
+            }
+        };
 
         self.consume(TokenType::Equal, "All variables must be initialized")?;
         let initializer = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ; after variable declaration")?;
 
         Ok(Statement::Let {
-            token: name,
+            declaration,
             expression: initializer,
             mutable,
         })

@@ -13,3 +13,9 @@ fn test_array_from_return() {
     assert_eq(x[0], 1);
     assert_eq(x[1], 2);
 }
+
+fn test_array_destructuring() {
+    let [x, y] = return_array();
+    assert_eq(x, 1);
+    assert_eq(y, 2);
+}
