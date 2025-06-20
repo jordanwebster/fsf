@@ -3,8 +3,8 @@ import std::react::use_state;
 cmpnt Index() {
     let (count, set_count) = use_state(0);
 
-    <html>
+    <div>
         <span>`Count: {count}`</span>
         <button onclick={|| set_count(count + 1)}>"increment"</button>
-    </html>
+    </div>
 }
