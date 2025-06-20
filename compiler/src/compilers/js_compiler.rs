@@ -38,7 +38,9 @@ impl JsCompiler {
             false => compile_dir.join("index.jsx"),
         };
         let mut output_file = File::create(&output_path)?;
-        output_file.write_all(REACT_BOOTSTRAP_HEADER.as_bytes())?;
+        if !is_exec_mode {
+            output_file.write_all(REACT_BOOTSTRAP_HEADER.as_bytes())?;
+        }
 
         let name_map = Self::construct_name_map(root, &program);
         self.name_map = name_map;
