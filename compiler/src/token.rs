@@ -76,6 +76,10 @@ pub enum TokenType {
     RunTest,
     TestRunner,
 
+    // Escape hatches.
+    RawJs,
+    RawGo,
+
     EOF,
 }
 

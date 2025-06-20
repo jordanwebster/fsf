@@ -1,5 +1,10 @@
 import example_file_module::double;
+import std::greeting::hello_world;
 
 fn test_file_module() -> void {
     assert_eq(double(1), 2);
+}
+
+fn test_std_lib_import() -> void {
+    assert_eq(hello_world(), "hello world");
 }

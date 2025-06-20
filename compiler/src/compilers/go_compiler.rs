@@ -49,6 +49,14 @@ impl GoCompiler {
                 body,
                 return_type,
             } => {
+                let return_type = match return_type.as_deref() {
+                    Some("int") => "int",
+                    Some("str") => "string",
+                    Some("void") => "",
+                    Some(other) => other,
+                    None => "",
+                };
+
                 let statements = body
                     .statements
                     .into_iter()
@@ -73,11 +81,20 @@ impl GoCompiler {
                         "func {}({}) {} {{\n{}\nreturn {}\n}}\n",
                         name,
                         params,
-                        return_type.unwrap(),
+                        return_type,
                         statements,
                         self.compile_expression(expr)
                     ),
-                    None => format!("func {}({}) {{\n{}\n}}\n", name, params, statements),
+                    None => format!(
+                        "func {}({}) {} {{\n{}\n}}\n",
+                        name,
+                        params,
+                        // This is a HACK, because we have "string" types and injecting raw code.
+                        // We need to be able to conditionally compile JS or Go to ensure typing
+                        // is correct.
+                        return_type,
+                        statements
+                    ),
                 }
             }
             Item::Component {
@@ -146,11 +163,15 @@ impl GoCompiler {
                 let tmp_var = "x_tmp";
                 let declaration_str = match declaration {
                     Declaration::Name(ref name) => format!("{} := ", name.clone().value.unwrap()),
-                    Declaration::Array(ref names) => format!("{} := ", tmp_var,),
+                    Declaration::Array(_) => format!("{} := ", tmp_var),
+                    Declaration::Tuple(ref names) => {
+                        format!(
+                            "{} := ",
+                            names.iter().cloned().map(|t| t.value.unwrap()).join(", ")
+                        )
+                    }
                 };
 
-                // TODO: An optimisation we can make is to use Go's multiple return values depending
-                // on the type of the expression
                 let destructuring_str = match declaration {
                     Declaration::Name(_) => "".to_string(),
                     Declaration::Array(names) => format!(
@@ -166,6 +187,11 @@ impl GoCompiler {
                             ))
                             .join("\n")
                     ),
+                    // Note that for now we are only interested in the case
+                    // of destructing tuples returned from functions so there is
+                    // nothing to do. When we add more general tuples as structs
+                    // there will be something to do here.
+                    Declaration::Tuple(_) => "".to_string(),
                 };
                 match expression {
                     Expression::WithoutBlock(expr) => {
@@ -329,7 +355,11 @@ impl GoCompiler {
                     .join(", ");
                 format!("fmt.Sprintf(\"{}\", {})", format_string, arguments)
             }
-            ExpressionWithoutBlock::Html { name, inner, .. } => {
+            ExpressionWithoutBlock::Html {
+                name,
+                inner,
+                attributes,
+            } => {
                 // TODO: Preserve newlines for HTML. Newlines between inline elements get
                 // converted into spaces.
                 let mut output = String::new();
@@ -343,6 +373,13 @@ impl GoCompiler {
                 };
 
                 output.push_str(&format!("builder.beginElement(\"{}\")\n", name.lexeme));
+                for (name, value_expr) in attributes {
+                    output.push_str(&format!(
+                        "builder.addAttribute(\"{}\", {})\n",
+                        name.lexeme,
+                        self.compile_expression(value_expr).replace("\n", ""),
+                    ));
+                }
                 for expression in inner {
                     match expression {
                         Expression::WithoutBlock(ExpressionWithoutBlock::FString { .. })
@@ -388,7 +425,7 @@ impl GoCompiler {
                     Expression::WithoutBlock(expression) => {
                         // TODO: Add proper type inference
                         format!(
-                            "func({}) int {{\nreturn {};\n}}\n",
+                            "func({}) int {{\nreturn {}\n}}\n",
                             params,
                             self.compile_expression_without_block(expression)
                         )
@@ -413,6 +450,14 @@ impl GoCompiler {
                     self.compile_expression(*index)
                 )
             }
+            // Note that because we only care about tuples returned from functions right now
+            // we can just use Go's multiple returns
+            ExpressionWithoutBlock::Tuple { elements } => elements
+                .into_iter()
+                .map(|e| self.compile_expression(e))
+                .join(", "),
+            ExpressionWithoutBlock::RawJs(_) => "".to_string(),
+            ExpressionWithoutBlock::RawGo(code) => format!("{}\n", code),
         }
     }
 }

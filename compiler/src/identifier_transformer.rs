@@ -4,9 +4,11 @@ use crate::item::Item;
 use crate::parse_module;
 use crate::statement::Statement;
 use crate::token::Literal;
+use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 
 pub fn walk_ast(program: &mut Program, visitor: &mut impl AstVisitor) {
     visitor.visit_program(program);
@@ -117,11 +119,18 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
                 walk_expression(expression, visitor)
             }
         }
+        ExpressionWithoutBlock::Tuple { elements, .. } => {
+            for expression in elements {
+                walk_expression(expression, visitor)
+            }
+        }
 
         // NO OPS
         ExpressionWithoutBlock::Literal(_) => (),
         ExpressionWithoutBlock::Variable(_) => (),
         ExpressionWithoutBlock::FString { .. } => (),
+        ExpressionWithoutBlock::RawJs(_) => (),
+        ExpressionWithoutBlock::RawGo(_) => (),
     }
 }
 
@@ -137,6 +146,41 @@ pub trait AstVisitor {
     fn visit_expression_with_block(&mut self, _expr: &mut ExpressionWithBlock) {}
 
     fn visit_expression_without_block(&mut self, _expr: &mut ExpressionWithoutBlock) {}
+}
+
+pub struct StandardLibraryTransformer {
+    root: PathBuf,
+}
+
+impl StandardLibraryTransformer {
+    pub fn new(root: PathBuf) -> Self {
+        Self { root }
+    }
+
+    pub fn transform(&mut self, program: &mut Program) -> Result<()> {
+        let std_lib_dir = Path::new("../std");
+        let mut modules = vec![];
+
+        for entry in WalkDir::new(std_lib_dir) {
+            let entry = entry?;
+            let path = entry.path();
+
+            // Check if it's a file and has the desired extension
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("fsf") {
+                let relative_path = path.strip_prefix(std_lib_dir)?;
+                match std::fs::read_to_string(path) {
+                    Ok(contents) => {
+                        let module =
+                            parse_module(contents, self.root.join("std").join(relative_path))?;
+                        modules.push(module);
+                    }
+                    Err(e) => eprintln!("Error reading {}: {}", path.display(), e),
+                }
+            }
+        }
+        program.extend(modules);
+        Ok(())
+    }
 }
 
 pub struct GoIdentifierTransformer {

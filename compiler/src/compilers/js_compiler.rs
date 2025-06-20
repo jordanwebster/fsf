@@ -194,7 +194,7 @@ impl JsCompiler {
                     "let {} =",
                     match declaration {
                         Declaration::Name(name) => name.value.unwrap().to_string(),
-                        Declaration::Array(names) => format!(
+                        Declaration::Tuple(names) | Declaration::Array(names) => format!(
                             "[{}]",
                             names
                                 .into_iter()
@@ -411,6 +411,15 @@ impl JsCompiler {
                     self.compile_expression(*index)
                 )
             }
+            ExpressionWithoutBlock::Tuple { elements } => {
+                let elements = elements
+                    .into_iter()
+                    .map(|e| self.compile_expression(e))
+                    .join(", ");
+                format!("[{}]", elements)
+            }
+            ExpressionWithoutBlock::RawJs(code) => format!("{}\n", code),
+            ExpressionWithoutBlock::RawGo(_) => "".to_string(),
         }
     }
 

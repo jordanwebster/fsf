@@ -1,10 +1,10 @@
-import std::react;
+import std::react::use_state;
 
 cmpnt Index() {
-    let [count, set_count] = react::use_state(0);
+    let (count, set_count) = use_state(0);
 
     <html>
         <span>`Count: {count}`</span>
-        <button onclick={|| set_count(count += 1)}>"increment"</button>
+        <button onclick={|| set_count(count + 1)}>"increment"</button>
     </html>
 }

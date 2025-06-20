@@ -2,7 +2,8 @@ use crate::compilers::go_compiler::GoCompiler;
 use crate::compilers::js_compiler::JsCompiler;
 use crate::compilers::{Module, Program};
 use crate::identifier_transformer::{
-    GoIdentifierTransformer, JsIdentifierTransformer, TestRunnerTransformer,
+    GoIdentifierTransformer, JsIdentifierTransformer, StandardLibraryTransformer,
+    TestRunnerTransformer,
 };
 use crate::parser::Parser;
 use crate::scanner::Scanner;
@@ -73,13 +74,16 @@ fn main() -> Result<()> {
 
 fn serve(path: &Path) -> Result<()> {
     // TODO: Handle multiple routes
-    let program = std::fs::read_dir(path)?
+    let mut program = std::fs::read_dir(path)?
         .filter_map(|entry| match entry {
             Ok(entry) if entry.path().is_file() => Some(entry.path()),
             _ => None,
         })
         .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
+
+    let mut std_lib_transformer = StandardLibraryTransformer::new(path.into());
+    std_lib_transformer.transform(&mut program)?;
 
     let js_program = program.clone();
 
@@ -98,7 +102,7 @@ fn serve(path: &Path) -> Result<()> {
         .arg("../javascript/")
         .arg(&js_dir)
         .status()?;
-    // TODO: Filter out modules in app/ directory
+    // TODO: Filter out modules to only include app/ directory
     for module in js_program {
         let mut js_compiler = JsCompiler::new();
         js_compiler.compile(path, vec![module], &js_dir, false)?;
@@ -212,6 +216,9 @@ fn test(path: &Path, target: &Target) -> Result<()> {
 
     let mut test_runner_transformer = TestRunnerTransformer::new(path.into());
     test_runner_transformer.transform(&mut program);
+
+    let mut std_lib_transformer = StandardLibraryTransformer::new(path.into());
+    std_lib_transformer.transform(&mut program)?;
 
     match target {
         Target::Go => {

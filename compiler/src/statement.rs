@@ -11,6 +11,7 @@ pub enum MaybeStatement {
 pub enum Declaration {
     Name(Token),
     Array(Vec<Token>),
+    Tuple(Vec<Token>),
 }
 
 #[derive(Debug, Clone)]

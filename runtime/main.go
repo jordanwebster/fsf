@@ -61,8 +61,13 @@ func (h *HTMLBuilder) Reset() {
 	h.buffer.Reset()
 }
 
+// TODO: Delete once we have tree pruning. This is to avoid unused variables
+// in Go.
+func (h *HTMLBuilder) addAttribute(name string, value interface{}) {
+}
+
 func h1(w http.ResponseWriter, _ *http.Request) {
-    io.WriteString(w, index())
+    io.WriteString(w, Index())
 }
 
 func main() {

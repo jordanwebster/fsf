@@ -241,32 +241,54 @@ impl Parser {
     fn let_declaration(&mut self) -> Result<Statement, ParseError> {
         let mutable = self.match_token(&[TokenType::Mut]);
 
-        let declaration = match self.match_token(&[TokenType::LeftSquareBracket]) {
-            true => {
-                let mut names = vec![];
-                if !self.check(&TokenType::RightSquareBracket) {
-                    loop {
-                        let name = self
-                            .consume(TokenType::Identifier, "Expect variable name")?
-                            .clone();
-                        names.push(name);
+        let declaration =
+            match self.match_token(&[TokenType::LeftSquareBracket, TokenType::LeftParen]) {
+                true => match self.previous().token_type {
+                    TokenType::LeftSquareBracket => {
+                        let mut names = vec![];
+                        if !self.check(&TokenType::RightSquareBracket) {
+                            loop {
+                                let name = self
+                                    .consume(TokenType::Identifier, "Expect variable name")?
+                                    .clone();
+                                names.push(name);
 
-                        if !self.match_token(&[TokenType::Comma]) {
-                            break;
+                                if !self.match_token(&[TokenType::Comma]) {
+                                    break;
+                                }
+                            }
                         }
-                    }
-                }
 
-                self.consume(TokenType::RightSquareBracket, "Expect ']'")?;
-                Declaration::Array(names)
-            }
-            false => {
-                let name = self
-                    .consume(TokenType::Identifier, "Expect variable name")?
-                    .clone();
-                Declaration::Name(name)
-            }
-        };
+                        self.consume(TokenType::RightSquareBracket, "Expect ']'")?;
+                        Declaration::Array(names)
+                    }
+                    TokenType::LeftParen => {
+                        let mut names = vec![];
+                        if !self.check(&TokenType::RightParen) {
+                            loop {
+                                let name = self
+                                    .consume(TokenType::Identifier, "Expect variable name")?
+                                    .clone();
+                                names.push(name);
+
+                                if !self.match_token(&[TokenType::Comma]) {
+                                    break;
+                                }
+                            }
+                        }
+
+                        self.consume(TokenType::RightParen, "Expect ')'")?;
+                        Declaration::Tuple(names)
+                    }
+                    _ => panic!("Not possible"),
+                },
+                false => {
+                    let name = self
+                        .consume(TokenType::Identifier, "Expect variable name")?
+                        .clone();
+                    Declaration::Name(name)
+                }
+            };
 
         self.consume(TokenType::Equal, "All variables must be initialized")?;
         let initializer = self.expression()?;
@@ -563,9 +585,38 @@ impl Parser {
             return Ok(ExpressionWithoutBlock::Variable(self.previous().clone()));
         }
         if self.match_token(&[TokenType::LeftParen]) {
-            let expr = self.expression_without_block()?;
-            self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
-            return Ok(ExpressionWithoutBlock::Grouping(expr.into()));
+            match self.peek_next() {
+                Some(token) if token.token_type == TokenType::Comma => {
+                    return self.tuple();
+                }
+                _ => {
+                    let expr = self.expression_without_block()?;
+                    self.consume(TokenType::RightParen, "Expect ')' after expression.")?;
+                    return Ok(ExpressionWithoutBlock::Grouping(expr.into()));
+                }
+            }
+        }
+        if self.match_token(&[TokenType::RawJs]) {
+            self.consume(TokenType::LeftParen, "Expect '(' opening raw code")?;
+            let code = self
+                .consume(TokenType::String, "Expect raw code as a string")?
+                .clone()
+                .value
+                .unwrap()
+                .to_string();
+            self.consume(TokenType::RightParen, "Expect ')' after code")?;
+            return Ok(ExpressionWithoutBlock::RawJs(code));
+        }
+        if self.match_token(&[TokenType::RawGo]) {
+            self.consume(TokenType::LeftParen, "Expect '(' opening raw code")?;
+            let code = self
+                .consume(TokenType::String, "Expect raw code as a string")?
+                .clone()
+                .value
+                .unwrap()
+                .to_string();
+            self.consume(TokenType::RightParen, "Expect ')' after code")?;
+            return Ok(ExpressionWithoutBlock::RawGo(code));
         }
 
         // TODO: Make these expression part of the precedence tree proper
@@ -599,9 +650,28 @@ impl Parser {
             }
         }
 
-        self.consume(TokenType::RightSquareBracket, "Expect ']' after elements")?;
+        self.consume(
+            TokenType::RightSquareBracket,
+            "Expect ']' after array elements",
+        )?;
 
         Ok(ExpressionWithoutBlock::Array { elements })
+    }
+
+    fn tuple(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut elements: Vec<Expression> = Vec::new();
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                elements.push(self.expression()?);
+                if !self.match_token(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expect ')' after tuple elements")?;
+
+        Ok(ExpressionWithoutBlock::Tuple { elements })
     }
 
     fn fstring(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -742,6 +812,10 @@ impl Parser {
 
     fn peek(&self) -> &Token {
         self.tokens.get(self.current).unwrap()
+    }
+
+    fn peek_next(&self) -> Option<&Token> {
+        self.tokens.get(self.current + 1)
     }
 
     fn previous(&self) -> &Token {

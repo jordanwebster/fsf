@@ -61,6 +61,11 @@ pub enum ExpressionWithoutBlock {
     Array {
         elements: Vec<Expression>,
     },
+    Tuple {
+        elements: Vec<Expression>,
+    },
+    RawJs(String),
+    RawGo(String),
 }
 
 #[derive(Debug, Clone)]

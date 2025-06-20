@@ -1,0 +1,9 @@
+fn return_tuple() -> "(int, int)" {
+    (1, 2)
+}
+
+fn test_destructure_from_function() {
+    let (x, y) = return_tuple();
+    assert_eq(x, 1);
+    assert_eq(y, 2);
+}

@@ -217,6 +217,7 @@ impl Scanner {
                 None,
                 self.line,
             )),
+            '@' => self.raw_code(tokens),
             _ => todo!("Handle unexpected tokens"),
         }
     }
@@ -342,5 +343,21 @@ impl Scanner {
             Some(Literal::Identifier(text)),
             self.line,
         ));
+    }
+
+    fn raw_code(&mut self, tokens: &mut Vec<Token>) {
+        // Consume the @
+        self.advance();
+
+        while self.peek().is_alphanumeric() || self.peek() == '_' {
+            self.advance();
+        }
+
+        let text = self.source[self.start..self.current].to_string();
+        match text.as_str() {
+            "@js" => tokens.push(Token::new(TokenType::RawJs, text.clone(), None, self.line)),
+            "@go" => tokens.push(Token::new(TokenType::RawGo, text.clone(), None, self.line)),
+            _ => panic!("Unexpected raw code: {}", text),
+        }
     }
 }

@@ -1,0 +1,4 @@
+fn use_state(x: int) -> "(int, func(int) int)" {
+    @js("return React.useState(x)");
+    @go("return 0, func(x int) int { return 0 }");
+}
