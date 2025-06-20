@@ -102,11 +102,14 @@ fn serve(path: &Path) -> Result<()> {
         .arg("../javascript/")
         .arg(&js_dir)
         .status()?;
-    // TODO: Filter out modules to only include app/ directory
-    for module in js_program {
-        let mut js_compiler = JsCompiler::new();
-        js_compiler.compile(path, vec![module], &js_dir, false)?;
-    }
+
+    // // TODO: Filter out modules to only include app/ directory
+    // for module in js_program {
+    //     let mut js_compiler = JsCompiler::new();
+    //     js_compiler.compile(path, vec![module], &js_dir, false)?;
+    // }
+    let mut js_compiler = JsCompiler::new();
+    js_compiler.compile(path, js_program, &js_dir, false)?;
 
     let cwd = std::env::current_dir()?;
     std::env::set_current_dir(&js_dir)?;

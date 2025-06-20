@@ -12,6 +12,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 const MAIN_BOOTSTRAP: &str = include_str!("../bootstrap/js_bootstrap.js");
+const REACT_BOOTSTRAP_HEADER: &str = include_str!("../bootstrap/react_bootstrap_header.js");
+const REACT_BOOTSTRAP_FOOTER: &str = include_str!("../bootstrap/react_bootstrap_footer.js");
 
 pub struct JsCompiler {
     name_map: HashMap<String, String>,
@@ -36,6 +38,7 @@ impl JsCompiler {
             false => compile_dir.join("index.jsx"),
         };
         let mut output_file = File::create(&output_path)?;
+        output_file.write_all(REACT_BOOTSTRAP_HEADER.as_bytes())?;
 
         let name_map = Self::construct_name_map(root, &program);
         self.name_map = name_map;
@@ -52,6 +55,9 @@ impl JsCompiler {
 
         if is_exec_mode {
             output_file.write_all(MAIN_BOOTSTRAP.as_bytes())?;
+        } else {
+            // TODO: Write a component map so we know which component to hydrate the root
+            output_file.write_all(REACT_BOOTSTRAP_FOOTER.as_bytes())?;
         }
         Ok(())
     }
