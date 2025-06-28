@@ -32,6 +32,7 @@ fn walk_item(item: &mut Item, visitor: &mut impl AstVisitor) {
     match item {
         Item::Function { body, .. } => walk_block(body, visitor),
         Item::Component { body, .. } => walk_block(body, visitor),
+        Item::Struct { .. } => (),
         Item::Import { .. } => (),
         Item::TestRunner => (),
     }
@@ -101,6 +102,9 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
             walk_expression_without_block(callee, visitor);
             walk_expression(index, visitor)
         }
+        ExpressionWithoutBlock::Field { callee, .. } => {
+            walk_expression_without_block(callee, visitor);
+        }
         ExpressionWithoutBlock::Lambda { body, .. } => walk_expression(body, visitor),
         ExpressionWithoutBlock::Grouping(expr) => walk_expression_without_block(expr, visitor),
         ExpressionWithoutBlock::Unary { right, .. } => {
@@ -121,6 +125,11 @@ fn walk_expression_without_block(expr: &mut ExpressionWithoutBlock, visitor: &mu
         }
         ExpressionWithoutBlock::Tuple { elements, .. } => {
             for expression in elements {
+                walk_expression(expression, visitor)
+            }
+        }
+        ExpressionWithoutBlock::Struct { fields, .. } => {
+            for (_, expression) in fields {
                 walk_expression(expression, visitor)
             }
         }

@@ -132,6 +132,19 @@ impl GoCompiler {
                     None => format!("func {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
+            Item::Struct { name, fields } => {
+                let field_strings = fields
+                    .into_iter()
+                    .map(|f| {
+                        format!(
+                            "{} {}",
+                            f.name,
+                            map_type_annotation(Some(f.type_annotation.as_ref()))
+                        )
+                    })
+                    .join("\n");
+                format!("type {} struct {{\n{}\n}}\n", name, field_strings)
+            }
             Item::Import { .. } => "".to_string(),
             Item::TestRunner => r#"
                 func runTest(test func(), name string) {
@@ -411,13 +424,7 @@ impl GoCompiler {
                         format!(
                             "{} {}",
                             p.name,
-                            match p.type_annotation.as_deref() {
-                                Some("int") => "int",
-                                Some("str") => "string",
-                                Some(other) => other,
-                                // TODO: Add proper type inference
-                                None => "int",
-                            }
+                            map_type_annotation(p.type_annotation.as_deref())
                         )
                     })
                     .join(", ");
@@ -443,12 +450,29 @@ impl GoCompiler {
                     .join(", ");
                 format!("[{}]{}{{{}}}", count, type_, elements)
             }
+            ExpressionWithoutBlock::Struct { name, fields } => {
+                format!(
+                    "{}{{\n{}}}",
+                    name.lexeme,
+                    fields
+                        .into_iter()
+                        .map(|(field, value)| format!(
+                            "{}: {}",
+                            field.lexeme,
+                            self.compile_expression(value)
+                        ))
+                        .join(",\n")
+                )
+            }
             ExpressionWithoutBlock::Index { callee, index } => {
                 format!(
                     "{}[{}]",
                     self.compile_expression(*callee),
                     self.compile_expression(*index)
                 )
+            }
+            ExpressionWithoutBlock::Field { callee, field } => {
+                format!("{}.{}", self.compile_expression(*callee), field.lexeme)
             }
             // Note that because we only care about tuples returned from functions right now
             // we can just use Go's multiple returns
@@ -459,5 +483,14 @@ impl GoCompiler {
             ExpressionWithoutBlock::RawJs(_) => "".to_string(),
             ExpressionWithoutBlock::RawGo(code) => format!("{}\n", code),
         }
+    }
+}
+
+fn map_type_annotation(type_: Option<&str>) -> &str {
+    match type_ {
+        Some("int") => "int",
+        Some("str") => "string",
+        Some(other) => other,
+        None => "int",
     }
 }

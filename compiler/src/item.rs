@@ -7,6 +7,12 @@ pub struct Parameter {
 }
 
 #[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: String,
+    pub type_annotation: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum Item {
     Function {
         name: String,
@@ -24,4 +30,8 @@ pub enum Item {
         path: Vec<String>,
     },
     TestRunner,
+    Struct {
+        name: String,
+        fields: Vec<StructField>,
+    },
 }

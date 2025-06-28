@@ -173,6 +173,7 @@ impl JsCompiler {
                     None => format!("function {}({}) {{\n{}\n}}\n", name, params, statements),
                 }
             }
+            Item::Struct { .. } => "".to_string(),
             Item::Import { .. } => "".to_string(),
             Item::TestRunner => r#"
                 function runTest(test, name) {
@@ -419,12 +420,28 @@ impl JsCompiler {
                     self.compile_expression(*index)
                 )
             }
+            ExpressionWithoutBlock::Field { callee, field } => {
+                format!("{}.{}", self.compile_expression(*callee), field.lexeme)
+            }
             ExpressionWithoutBlock::Tuple { elements } => {
                 let elements = elements
                     .into_iter()
                     .map(|e| self.compile_expression(e))
                     .join(", ");
                 format!("[{}]", elements)
+            }
+            ExpressionWithoutBlock::Struct { fields, .. } => {
+                format!(
+                    "{{\n{}}}",
+                    fields
+                        .into_iter()
+                        .map(|(field, value)| format!(
+                            "{}: {}",
+                            field.lexeme,
+                            self.compile_expression(value)
+                        ))
+                        .join(",\n")
+                )
             }
             ExpressionWithoutBlock::RawJs(code) => format!("{}\n", code),
             ExpressionWithoutBlock::RawGo(_) => "".to_string(),

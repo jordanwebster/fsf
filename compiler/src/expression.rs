@@ -34,6 +34,10 @@ pub enum ExpressionWithoutBlock {
         callee: Box<ExpressionWithoutBlock>,
         index: Box<Expression>,
     },
+    Field {
+        callee: Box<ExpressionWithoutBlock>,
+        field: Token,
+    },
     Lambda {
         parameters: Vec<LambdaParameter>,
         body: Box<Expression>,
@@ -63,6 +67,10 @@ pub enum ExpressionWithoutBlock {
     },
     Tuple {
         elements: Vec<Expression>,
+    },
+    Struct {
+        name: Token,
+        fields: Vec<(Token, Expression)>,
     },
     RawJs(String),
     RawGo(String),

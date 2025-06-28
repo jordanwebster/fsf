@@ -2,10 +2,17 @@ use crate::expression::{
     BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk,
     LambdaParameter,
 };
-use crate::item::{Item, Parameter};
+use crate::item::{Item, Parameter, StructField};
 use crate::statement::{Declaration, MaybeStatement, Statement};
 use crate::token::{Literal, Token, TokenType};
+use std::path::PathBuf;
 use thiserror::Error;
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum ParseContext {
+    Normal,
+    IfCondition,
+}
 
 #[derive(Error, Debug)]
 pub enum ParseError {
@@ -16,11 +23,18 @@ pub enum ParseError {
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    path: PathBuf,
+    context_stack: Vec<ParseContext>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Parser {
-        Self { tokens, current: 0 }
+    pub fn new(tokens: Vec<Token>, path: PathBuf) -> Parser {
+        Self {
+            tokens,
+            path,
+            current: 0,
+            context_stack: Vec::new(),
+        }
     }
 
     pub fn parse(&mut self) -> Vec<Item> {
@@ -41,6 +55,8 @@ impl Parser {
         } else if self.match_token(&[TokenType::TestRunner]) {
             self.consume(TokenType::Semicolon, "Expect ';' after item")
                 .map(|_| Item::TestRunner)
+        } else if self.match_token(&[TokenType::Struct]) {
+            self.struct_()
         } else {
             Err(ParseError::SyntaxError(
                 self.peek().clone(),
@@ -52,7 +68,7 @@ impl Parser {
             Ok(item) => Some(item),
             Err(error) => {
                 // TODO: Without synchronization we can get in an infinite loop here
-                panic!("Got error: {:?}", error);
+                panic!("Got error {}: {:?}", self.path.to_string_lossy(), error);
             }
         }
     }
@@ -153,6 +169,37 @@ impl Parser {
         self.consume(TokenType::Semicolon, "Expect ';'")?;
 
         Ok(Item::Import { path })
+    }
+
+    fn struct_(&mut self) -> Result<Item, ParseError> {
+        let name = self
+            .consume(TokenType::Identifier, "Expect type name")?
+            .clone()
+            .lexeme;
+
+        self.consume(TokenType::LeftBrace, "Expect '{'")?;
+        let mut fields = Vec::new();
+        while !self.check(&TokenType::RightBrace) {
+            let name = self
+                .consume(TokenType::Identifier, "Expect field name")?
+                .clone()
+                .lexeme;
+            self.consume(TokenType::Colon, "Expect type annotation")?;
+            let type_annotation = self
+                .consume(TokenType::Identifier, "Expect type annotation")?
+                .clone()
+                .lexeme;
+            self.consume(TokenType::Comma, "Expect ','")?;
+
+            fields.push(StructField {
+                name,
+                type_annotation,
+            });
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}'")?;
+
+        Ok(Item::Struct { name, fields })
     }
 
     fn lambda(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -386,7 +433,10 @@ impl Parser {
     }
 
     fn if_expression(&mut self) -> Result<ExpressionWithBlock, ParseError> {
+        self.push_context(ParseContext::IfCondition);
         let expr = self.expression()?;
+        self.pop_context();
+
         self.consume(TokenType::LeftBrace, "Expect '{'")?;
         let then = self.block_expression()?;
         let r#else = match self.check(&TokenType::Else) {
@@ -554,7 +604,7 @@ impl Parser {
     }
 
     fn index(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
-        let mut expr = self.primary()?;
+        let mut expr = self.field()?;
 
         while self.match_token(&[TokenType::LeftSquareBracket]) {
             let index = self.expression()?;
@@ -564,6 +614,22 @@ impl Parser {
             };
 
             self.consume(TokenType::RightSquareBracket, "Expect ']' after index")?;
+        }
+
+        Ok(expr)
+    }
+
+    fn field(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let mut expr = self.primary()?;
+
+        if self.match_token(&[TokenType::Dot]) {
+            let field = self
+                .consume(TokenType::Identifier, "Expect field name")?
+                .clone();
+            expr = ExpressionWithoutBlock::Field {
+                callee: expr.into(),
+                field,
+            }
         }
 
         Ok(expr)
@@ -582,6 +648,11 @@ impl Parser {
             ));
         }
         if self.match_token(&[TokenType::Identifier]) {
+            if self.check(&TokenType::LeftBrace)
+                && self.current_context() != ParseContext::IfCondition
+            {
+                return self.struct_expression();
+            }
             return Ok(ExpressionWithoutBlock::Variable(self.previous().clone()));
         }
         if self.match_token(&[TokenType::LeftParen]) {
@@ -672,6 +743,22 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after tuple elements")?;
 
         Ok(ExpressionWithoutBlock::Tuple { elements })
+    }
+
+    fn struct_expression(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
+        let name = self.previous().clone();
+        self.consume(TokenType::LeftBrace, "Expect '{' after struct")?;
+        let mut fields: Vec<(Token, Expression)> = Vec::new();
+        while !self.match_token(&[TokenType::RightBrace]) {
+            let name = self.consume(TokenType::Identifier, "Expect name")?.clone();
+            self.consume(TokenType::Colon, "Expect ':' after name")?;
+            let value = self.expression()?;
+            fields.push((name, value));
+
+            self.consume(TokenType::Comma, "Expect ',' after field initialisation")?;
+        }
+
+        Ok(ExpressionWithoutBlock::Struct { name, fields })
     }
 
     fn fstring(&mut self) -> Result<ExpressionWithoutBlock, ParseError> {
@@ -824,5 +911,20 @@ impl Parser {
 
     fn is_at_end(&self) -> bool {
         self.peek().token_type == TokenType::EOF
+    }
+
+    fn push_context(&mut self, context: ParseContext) {
+        self.context_stack.push(context);
+    }
+
+    fn pop_context(&mut self) {
+        self.context_stack.pop();
+    }
+
+    fn current_context(&self) -> ParseContext {
+        self.context_stack
+            .last()
+            .copied()
+            .unwrap_or(ParseContext::Normal)
     }
 }

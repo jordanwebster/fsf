@@ -147,7 +147,7 @@ fn parse_module_from_file(path: PathBuf) -> Result<Module> {
 fn parse_module(contents: String, path: PathBuf) -> Result<Module> {
     let mut scanner = Scanner::new(contents);
     let tokens = scanner.scan_tokens();
-    let mut parser = Parser::new(tokens);
+    let mut parser = Parser::new(tokens, path.clone());
     Ok(Module {
         path,
         items: parser.parse(),

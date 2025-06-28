@@ -71,6 +71,7 @@ pub enum TokenType {
     Else,
     AssertEq,
     Import,
+    Struct,
 
     // Builtins.
     RunTest,
