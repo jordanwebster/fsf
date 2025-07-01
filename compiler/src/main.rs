@@ -1,7 +1,3 @@
-use crate::identifier_transformer::{
-    GoIdentifierTransformer, JsIdentifierTransformer, StandardLibraryTransformer,
-    TestRunnerTransformer,
-};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::targets::go_target::GoTarget;
@@ -16,13 +12,13 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 mod expression;
-mod identifier_transformer;
 mod item;
 mod parser;
 mod scanner;
 mod statement;
 mod targets;
 mod token;
+mod transformers;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum Target {
@@ -82,7 +78,7 @@ fn serve(path: &Path) -> Result<()> {
         .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
 
-    let mut std_lib_transformer = StandardLibraryTransformer::new(path.into());
+    let mut std_lib_transformer = transformers::StandardLibraryTransformer::new(path.into());
     std_lib_transformer.transform(&mut program)?;
 
     let js_program = program.clone();
@@ -217,15 +213,16 @@ fn test(path: &Path, target: &Target) -> Result<()> {
         .map(parse_module_from_file)
         .collect::<Result<Program>>()?;
 
-    let mut test_runner_transformer = TestRunnerTransformer::new(path.into());
+    let mut test_runner_transformer = transformers::TestRunnerTransformer::new(path.into());
     test_runner_transformer.transform(&mut program);
 
-    let mut std_lib_transformer = StandardLibraryTransformer::new(path.into());
+    let mut std_lib_transformer = transformers::StandardLibraryTransformer::new(path.into());
     std_lib_transformer.transform(&mut program)?;
 
     match target {
         Target::Go => {
-            let mut identifier_transformer = GoIdentifierTransformer::new(path.into());
+            let mut identifier_transformer =
+                transformers::GoIdentifierTransformer::new(path.into());
             identifier_transformer.transform(&mut program);
 
             let mut compiler = GoTarget::new();
@@ -246,7 +243,8 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             }
         }
         Target::Js => {
-            let mut identifier_transformer = JsIdentifierTransformer::new(path.into());
+            let mut identifier_transformer =
+                transformers::JsIdentifierTransformer::new(path.into());
             identifier_transformer.transform(&mut program);
 
             let mut compiler = JsTarget::new();
