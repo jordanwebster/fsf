@@ -1,8 +1,8 @@
-use crate::compilers::{Module, Program};
 use crate::expression::{BlockExpression, Expression, ExpressionWithBlock, ExpressionWithoutBlock};
 use crate::item::Item;
 use crate::parse_module;
 use crate::statement::Statement;
+use crate::targets::{Module, Program};
 use crate::token::Literal;
 use anyhow::Result;
 use itertools::Itertools;

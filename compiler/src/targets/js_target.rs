@@ -1,8 +1,8 @@
-use crate::compilers::Program;
 use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk};
 use crate::item::Item;
 use crate::statement::Declaration;
 use crate::statement::Statement;
+use crate::targets::Program;
 use crate::token::{Literal, TokenType};
 use anyhow::Result;
 use itertools::Itertools;
@@ -15,11 +15,11 @@ const MAIN_BOOTSTRAP: &str = include_str!("../bootstrap/js_bootstrap.js");
 const REACT_BOOTSTRAP_HEADER: &str = include_str!("../bootstrap/react_bootstrap_header.js");
 const REACT_BOOTSTRAP_FOOTER: &str = include_str!("../bootstrap/react_bootstrap_footer.js");
 
-pub struct JsCompiler {
+pub struct JsTarget {
     name_map: HashMap<String, String>,
 }
 
-impl JsCompiler {
+impl JsTarget {
     pub fn new() -> Self {
         Self {
             name_map: HashMap::new(),

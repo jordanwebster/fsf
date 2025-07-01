@@ -1,12 +1,12 @@
-use crate::compilers::go_compiler::GoCompiler;
-use crate::compilers::js_compiler::JsCompiler;
-use crate::compilers::{Module, Program};
 use crate::identifier_transformer::{
     GoIdentifierTransformer, JsIdentifierTransformer, StandardLibraryTransformer,
     TestRunnerTransformer,
 };
 use crate::parser::Parser;
 use crate::scanner::Scanner;
+use crate::targets::go_target::GoTarget;
+use crate::targets::js_target::JsTarget;
+use crate::targets::{Module, Program};
 use anyhow::anyhow;
 use anyhow::Result;
 use clap::Parser as _;
@@ -15,13 +15,13 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-mod compilers;
 mod expression;
 mod identifier_transformer;
 mod item;
 mod parser;
 mod scanner;
 mod statement;
+mod targets;
 mod token;
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -89,7 +89,7 @@ fn serve(path: &Path) -> Result<()> {
 
     let compile_dir = PathBuf::from(".dist/runtime");
     std::fs::create_dir_all(&compile_dir)?;
-    let mut compiler = GoCompiler::new();
+    let mut compiler = GoTarget::new();
     compiler.compile(program, &compile_dir)?;
 
     setup_runtime()?;
@@ -108,7 +108,7 @@ fn serve(path: &Path) -> Result<()> {
     //     let mut js_compiler = JsCompiler::new();
     //     js_compiler.compile(path, vec![module], &js_dir, false)?;
     // }
-    let mut js_compiler = JsCompiler::new();
+    let mut js_compiler = JsTarget::new();
     js_compiler.compile(path, js_program, &js_dir, false)?;
 
     let cwd = std::env::current_dir()?;
@@ -165,7 +165,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
 
     match target {
         Target::Go => {
-            let mut compiler = GoCompiler::new();
+            let mut compiler = GoTarget::new();
             std::fs::create_dir_all(".dist/runtime")?;
             let compile_dir = PathBuf::from(".dist/runtime");
             compiler.compile(program, &compile_dir)?;
@@ -194,7 +194,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             }
         }
         Target::Js => {
-            let mut compiler = JsCompiler::new();
+            let mut compiler = JsTarget::new();
             let compile_dir = PathBuf::from("./dist/js");
             std::fs::create_dir_all(&compile_dir)?;
             compiler.compile(path, program, &compile_dir, true)?;
@@ -228,7 +228,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             let mut identifier_transformer = GoIdentifierTransformer::new(path.into());
             identifier_transformer.transform(&mut program);
 
-            let mut compiler = GoCompiler::new();
+            let mut compiler = GoTarget::new();
             let compile_dir = PathBuf::from(".dist/runtime");
             std::fs::create_dir_all(&compile_dir)?;
             compiler.compile(program, &compile_dir)?;
@@ -249,7 +249,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             let mut identifier_transformer = JsIdentifierTransformer::new(path.into());
             identifier_transformer.transform(&mut program);
 
-            let mut compiler = JsCompiler::new();
+            let mut compiler = JsTarget::new();
             let compile_dir = PathBuf::from(".dist/js");
             std::fs::create_dir_all(&compile_dir)?;
             compiler.compile(path, program, &compile_dir, true)?;

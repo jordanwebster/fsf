@@ -1,7 +1,7 @@
-use crate::compilers::Program;
 use crate::expression::{Expression, ExpressionWithBlock, ExpressionWithoutBlock, FStringChunk};
 use crate::item::Item;
 use crate::statement::{Declaration, Statement};
+use crate::targets::Program;
 use crate::token::{Literal, TokenType};
 use anyhow::Result;
 use itertools::Itertools;
@@ -9,11 +9,11 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub struct GoCompiler {
+pub struct GoTarget {
     building_html: bool,
 }
 
-impl GoCompiler {
+impl GoTarget {
     pub fn new() -> Self {
         Self {
             building_html: false,

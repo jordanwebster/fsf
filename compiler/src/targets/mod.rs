@@ -8,5 +8,5 @@ pub struct Module {
 }
 
 pub type Program = Vec<Module>;
-pub mod go_compiler;
-pub mod js_compiler;
+pub mod go_target;
+pub mod js_target;
