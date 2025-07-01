@@ -105,7 +105,7 @@ fn serve(path: &Path) -> Result<()> {
     //     js_compiler.compile(path, vec![module], &js_dir, false)?;
     // }
     let mut js_compiler = JsTarget::new();
-    js_compiler.compile(path, js_program, &js_dir, false)?;
+    js_compiler.compile(js_program, &js_dir, false)?;
 
     let cwd = std::env::current_dir()?;
     std::env::set_current_dir(&js_dir)?;
@@ -193,7 +193,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             let mut compiler = JsTarget::new();
             let compile_dir = PathBuf::from("./dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(path, program, &compile_dir, true)?;
+            compiler.compile(program, &compile_dir, true)?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {
@@ -250,7 +250,7 @@ fn test(path: &Path, target: &Target) -> Result<()> {
             let mut compiler = JsTarget::new();
             let compile_dir = PathBuf::from(".dist/js");
             std::fs::create_dir_all(&compile_dir)?;
-            compiler.compile(path, program, &compile_dir, true)?;
+            compiler.compile(program, &compile_dir, true)?;
 
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {

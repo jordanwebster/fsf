@@ -8,27 +8,22 @@ use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
 
 const MAIN_BOOTSTRAP: &str = include_str!("../bootstrap/js_bootstrap.js");
 const REACT_BOOTSTRAP_HEADER: &str = include_str!("../bootstrap/react_bootstrap_header.js");
 const REACT_BOOTSTRAP_FOOTER: &str = include_str!("../bootstrap/react_bootstrap_footer.js");
 
-pub struct JsTarget {
-    name_map: HashMap<String, String>,
-}
+pub struct JsTarget {}
 
 impl JsTarget {
     pub fn new() -> Self {
-        Self {
-            name_map: HashMap::new(),
-        }
+        Self {}
     }
 
     pub fn compile(
         &mut self,
-        root: &Path,
         program: Program,
         compile_dir: &Path,
         is_exec_mode: bool,
@@ -41,9 +36,6 @@ impl JsTarget {
         if !is_exec_mode {
             output_file.write_all(REACT_BOOTSTRAP_HEADER.as_bytes())?;
         }
-
-        let name_map = Self::construct_name_map(root, &program);
-        self.name_map = name_map;
 
         for module in program {
             let output = module
@@ -103,25 +95,6 @@ impl JsTarget {
             .collect()
     }
 
-    fn setup_test_runner(tests: Vec<String>, output_file: &mut File) -> Result<()> {
-        let input_file_path = Path::new("../test_runner/test_runner.js");
-
-        let mut content = String::new();
-        let mut file = File::open(input_file_path)?;
-        file.read_to_string(&mut content)?;
-
-        let replacement = tests
-            .iter()
-            .map(|t| format!("runner.runTest({t}, \"{t}\");"))
-            .join("\n");
-
-        let new_content = content.replace("/* replace: tests */", &replacement);
-
-        output_file.write_all(new_content.as_bytes())?;
-
-        Ok(())
-    }
-
     fn compile_item(&mut self, item: Item) -> String {
         match item {
             Item::Component {
@@ -161,7 +134,6 @@ impl JsTarget {
 
                 let params = parameters.iter().map(|p| p.name.clone()).join(", ");
 
-                let name = self.name_map.get(&name).unwrap().to_string();
                 match body.expr {
                     Some(expr) => format!(
                         "function {}({}) {{\n{}\nreturn {}\n}}\n",
@@ -347,12 +319,9 @@ impl JsTarget {
             }
             ExpressionWithoutBlock::Literal(literal) => self.compile_literal(&literal),
             ExpressionWithoutBlock::Unary { .. } => todo!(),
-            ExpressionWithoutBlock::Variable(identifier) => self
-                .name_map
-                .get(&identifier.lexeme)
-                .unwrap_or(&identifier.lexeme)
-                .clone()
-                .to_string(),
+            ExpressionWithoutBlock::Variable(identifier) => {
+                format!("{}", identifier.value.unwrap())
+            }
             ExpressionWithoutBlock::Assignment {
                 name,
                 value,
@@ -452,7 +421,7 @@ impl JsTarget {
         match literal {
             Literal::Number(value) => format!("{}", value),
             Literal::String(value) => format!("\"{}\"", value),
-            Literal::Identifier(identifier) => self.name_map[identifier].to_string(),
+            Literal::Identifier(identifier) => identifier.to_string(),
             Literal::True => "true".to_string(),
             Literal::False => "false".to_string(),
         }
