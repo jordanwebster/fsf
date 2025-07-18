@@ -28,7 +28,7 @@ jobs:
         if: matrix.target == 'go' || matrix.target == 'default'
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.22'
           check-latest: true
 
       - name: Set up Node.js
