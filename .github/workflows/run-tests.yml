@@ -56,3 +56,10 @@ jobs:
       - name: Run tests with target
         working-directory: ./compiler
         run: cargo run -- test ../tests --target ${{ matrix.target }}
+
+      - name: Make regression test script executable
+        run: chmod +x ./regression_tests/test_runner.sh
+
+      - name: Run regression tests
+        working-directory: ./regression_tests
+        run: ./test_runner.sh

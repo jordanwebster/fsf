@@ -1,0 +1,5 @@
+Failed to run Go command: # fsf
+./main.go:3:1: y declared and not used
+./main.go:3:11: undefined: x
+
+Error: Failed to run Go command
