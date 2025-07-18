@@ -180,13 +180,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
                     print!("{}", String::from_utf8_lossy(&output.stdout));
                     Ok(())
                 }
-                false => {
-                    eprintln!(
-                        "Failed to run Go command: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    );
-                    Err(anyhow!("Failed to run Go command"))
-                }
+                false => Err(anyhow!("Failed to run command")),
             }
         }
         Target::Js => {
@@ -198,7 +192,7 @@ fn run(path: &Path, target: &Target) -> Result<()> {
             std::env::set_current_dir(compile_dir)?;
             match Command::new("node").arg("main.js").status()?.success() {
                 true => Ok(()),
-                false => Err(anyhow!("Failed to run node")),
+                false => Err(anyhow!("Failed to run command")),
             }
         }
     }
